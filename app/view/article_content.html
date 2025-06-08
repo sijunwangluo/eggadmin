@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+  <link rel="stylesheet" href="/public/css/vendor/quill.core.css">
+  <link rel="stylesheet" href="/public/css/vendor/quill.snow.css">
+  <link rel="stylesheet" href="/public/css/vendor/quill.bubble.css">
   <style>
   .article-content-card {
     max-width: 1200px;
@@ -99,7 +102,14 @@
           <el-input v-model="form.title"></el-input>
         </el-form-item>
         <el-form-item label="内容" prop="content">
-          <el-input type="textarea" v-model="form.content" :rows="6"></el-input>
+          {% raw %}
+          <quill-editor
+            v-model="form.content"
+            ref="myQuillEditor"
+            :options="editorOption"
+            style="min-height: 200px;"
+          ></quill-editor>
+          {% endraw %}
         </el-form-item>
         <el-form-item label="标签" prop="tags">
           <el-select v-model="form.tags" multiple placeholder="请选择标签" style="width: 100%;">
@@ -128,9 +138,13 @@
   <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
   <script src="https://unpkg.com/element-ui/lib/index.js"></script>
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script src="/public/js/vendor/quill.js"></script>
+  <script src="/public/js/vendor/vue-quill-editor.js"></script>
   {% raw %}
   <script>
-  // 文章管理页面的 Vue 实例
+  // 注册 quill-editor 组件，使其全局可用
+  Vue.use(VueQuillEditor);
+
   const articleApp = new Vue({
     el: '.article-content-card',
     data() {
@@ -153,6 +167,32 @@
           content: '',
           status: 'draft',
           tags: []
+        },
+        // 富文本编辑器配置
+        editorOption: {
+          placeholder: '请输入文章内容...',
+          modules: {
+            toolbar: [
+              ['bold', 'italic', 'underline', 'strike'], // toggled buttons
+              ['blockquote', 'code-block'],
+
+              [{ 'header': 1 }, { 'header': 2 }], // custom button values
+              [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+              [{ 'script': 'sub' }, { 'script': 'super' }], // superscript/subscript
+              [{ 'indent': '-1' }, { 'indent': '+1' }], // outdent/indent
+              [{ 'direction': 'rtl' }], // text direction
+
+              [{ 'size': ['small', false, 'large', 'huge'] }], // custom dropdown
+              [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+
+              [{ 'color': [] }, { 'background': [] }], // dropdown with defaults from theme
+              [{ 'font': [] }],
+              [{ 'align': [] }],
+
+              ['clean'], // remove formatting button
+              ['link', 'image'] // link and image, video
+            ]
+          }
         },
         rules: {
           title: [
@@ -223,17 +263,23 @@
           tags: []
         };
         this.dialogVisible = true;
+        this.$nextTick(() => {
+          this.$refs.form.clearValidate();
+        });
       },
       handleEdit(row) {
         this.dialogTitle = '编辑文章';
         this.form = {
           id: row._id,
           title: row.title,
-          content: row.content,
+          content: row.content || '',
           status: row.status,
           tags: row.tags.map(tag => tag._id)
         };
         this.dialogVisible = true;
+        this.$nextTick(() => {
+          this.$refs.form.clearValidate();
+        });
       },
       async handleDelete(row) {
         try {
