@@ -90,6 +90,10 @@
             <i class="el-icon-document"></i>
             <span slot="title">日志管理</span>
           </el-menu-item>
+          <el-menu-item index="/schedule">
+            <i class="el-icon-time"></i>
+            <span slot="title">定时任务</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       <el-container>
@@ -156,6 +160,8 @@
             this.currentPath = '/tag-content';
           } else if (key === '/log') {
             this.currentPath = '/log-content';
+          } else if (key === '/schedule') {
+            this.currentPath = '/schedule-content';
           }
         },
         handleCommand(command) {

@@ -52,4 +52,15 @@ module.exports = app => {
 
   // 日志管理内容页
   router.get('/log-content', auth, controller.log.showLogContentPage);
+
+  // 定时任务内容页
+  router.get('/schedule-content', auth, controller.schedule.showScheduleContentPage);
+
+  // 定时任务管理 API
+  router.get('/api/scheduled_tasks', auth, controller.scheduledTask.index);
+  router.post('/api/scheduled_tasks', auth, controller.scheduledTask.create);
+  router.put('/api/scheduled_tasks/:id', auth, controller.scheduledTask.update);
+  router.delete('/api/scheduled_tasks/:id', auth, controller.scheduledTask.destroy);
+  router.post('/api/scheduled_tasks/batchDelete', auth, controller.scheduledTask.batchDestroy);
+  router.post('/api/scheduled_tasks/:id/toggleEnable', auth, controller.scheduledTask.toggleEnable);
 };

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+  <style>
+  .schedule-content-card {
+    max-width: 1200px;
+    margin: 40px auto 0 auto;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    padding: 32px 28px 32px 28px;
+  }
+  .operation-bar {
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .schedule-table-shadow {
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .schedule-dialog {
+    border-radius: 12px !important;
+    padding-bottom: 0 !important;
+  }
+  .el-dialog__header {
+    font-size: 1.2rem;
+    font-weight: bold;
+  }
+  .el-dialog__body {
+    padding-top: 18px !important;
+    padding-bottom: 0 !important;
+  }
+  .dialog-footer {
+    padding-bottom: 18px;
+  }
+  </style>
+</head>
+<body>
+  <div class="schedule-content-card">
+    <h2>定时任务管理</h2>
+    <div class="operation-bar">
+      <el-input
+        v-model="searchKeyword"
+        placeholder="搜索任务名称、描述或类型"
+        style="width: 280px;"
+        clearable
+        @clear="handleSearch"
+        @keyup.enter.native="handleSearch">
+        <el-button slot="append" icon="el-icon-search" @click="handleSearch"></el-button>
+      </el-input>
+      <el-select v-model="searchIsEnabled" placeholder="筛选状态" clearable @change="handleSearch">
+        <el-option label="已启用" :value="true"></el-option>
+        <el-option label="已禁用" :value="false"></el-option>
+      </el-select>
+      <el-button type="primary" @click="handleAdd" round>添加任务</el-button>
+      <el-button type="danger" @click="handleBatchDelete" :disabled="selectedTasks.length === 0" round>批量删除</el-button>
+    </div>
+
+    <el-table :data="taskList" style="width: 100%;margin-top:18px;" border v-loading="loading" class="schedule-table-shadow" @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="55"></el-table-column>
+      <el-table-column prop="name" label="任务名称" width="150"></el-table-column>
+      <el-table-column prop="description" label="描述"></el-table-column>
+      <el-table-column prop="taskType" label="任务类型" width="120"></el-table-column>
+      <el-table-column prop="intervalSeconds" label="间隔(秒)" width="100"></el-table-column>
+      <el-table-column label="状态" width="100">
+        <template slot-scope="scope">
+          <el-switch
+            v-model="scope.row.isEnabled"
+            @change="toggleEnable(scope.row)"
+            active-color="#13ce66"
+            inactive-color="#ff4949">
+          </el-switch>
+        </template>
+      </el-table-column>
+      <el-table-column prop="lastRunAt" label="上次执行时间" width="180"></el-table-column>
+      <el-table-column label="操作" width="180">
+        <template slot-scope="scope">
+          <el-button size="mini" @click="handleEdit(scope.row)" round>编辑</el-button>
+          <el-button size="mini" type="danger" @click="handleDelete(scope.row)" round>删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <div class="pagination-container" style="margin-top: 20px; text-align: right;">
+      <el-pagination
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        :current-page="pagination.page"
+        :page-sizes="[10, 20, 50, 100]"
+        :page-size="pagination.pageSize"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="pagination.total">
+      </el-pagination>
+    </div>
+
+    <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" custom-class="schedule-dialog" width="500px">
+      <el-form :model="form" :rules="rules" ref="form" label-width="100px">
+        <el-form-item label="任务名称" prop="name">
+          <el-input v-model="form.name"></el-input>
+        </el-form-item>
+        <el-form-item label="描述" prop="description">
+          <el-input type="textarea" v-model="form.description"></el-input>
+        </el-form-item>
+        <el-form-item label="任务类型" prop="taskType">
+          <el-select v-model="form.taskType" placeholder="请选择任务类型" style="width: 100%;">
+            <el-option label="日志清理" value="clean_logs"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="执行间隔(秒)" prop="intervalSeconds">
+          <el-input-number v-model="form.intervalSeconds" :min="5" :max="86400" style="width: 100%;"></el-input-number>
+        </el-form-item>
+        <el-form-item label="是否启用" prop="isEnabled">
+          <el-switch v-model="form.isEnabled"></el-switch>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="dialogVisible = false" round>取 消</el-button>
+        <el-button type="primary" @click="handleSubmit" round>确 定</el-button>
+      </div>
+    </el-dialog>
+  </div>
+
+  <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
+  <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script>
+  new Vue({
+    el: '.schedule-content-card',
+    data() {
+      return {
+        taskList: [],
+        searchKeyword: '',
+        searchIsEnabled: '',
+        loading: false,
+        dialogVisible: false,
+        dialogTitle: '',
+        selectedTasks: [],
+        pagination: {
+          total: 0,
+          page: 1,
+          pageSize: 10
+        },
+        form: {
+          id: '',
+          name: '',
+          description: '',
+          taskType: 'clean_logs',
+          intervalSeconds: 3600,
+          isEnabled: true
+        },
+        rules: {
+          name: [
+            { required: true, message: '请输入任务名称', trigger: 'blur' },
+            { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
+          ],
+          taskType: [
+            { required: true, message: '请选择任务类型', trigger: 'change' }
+          ],
+        }
+      }
+    },
+    created() {
+      this.fetchTaskList();
+    },
+    methods: {
+      async fetchTaskList() {
+        this.loading = true;
+        try {
+          const params = {
+            keyword: this.searchKeyword,
+            page: this.pagination.page,
+            pageSize: this.pagination.pageSize
+          };
+          if (this.searchIsEnabled !== '') {
+            params.isEnabled = this.searchIsEnabled;
+          }
+          const response = await axios.get('/api/scheduled_tasks', { params });
+          this.taskList = response.data.list.map(task => ({
+            ...task,
+            lastRunAt: task.lastRunAt ? this.formatDateTime(task.lastRunAt) : '从未运行'
+          }));
+          this.pagination.total = response.data.pagination.total;
+          this.pagination.page = response.data.pagination.page;
+          this.pagination.pageSize = response.data.pagination.pageSize;
+        } catch (error) {
+          this.$message.error('获取定时任务列表失败');
+          console.error('Error fetching scheduled tasks:', error);
+        } finally {
+          this.loading = false;
+        }
+      },
+      handleSizeChange(val) {
+        this.pagination.pageSize = val;
+        this.fetchTaskList();
+      },
+      handleCurrentChange(val) {
+        this.pagination.page = val;
+        this.fetchTaskList();
+      },
+      handleSearch() {
+        this.pagination.page = 1;
+        this.fetchTaskList();
+      },
+      handleSelectionChange(selection) {
+        this.selectedTasks = selection;
+      },
+      handleAdd() {
+        this.dialogTitle = '添加定时任务';
+        this.form = {
+          id: '',
+          name: '',
+          description: '',
+          taskType: 'clean_logs',
+          intervalSeconds: 3600,
+          isEnabled: true
+        };
+        this.dialogVisible = true;
+        this.$nextTick(() => {
+          this.$refs.form.clearValidate();
+        });
+      },
+      handleEdit(row) {
+        this.dialogTitle = '编辑定时任务';
+        this.form = {
+          id: row._id,
+          name: row.name,
+          description: row.description,
+          taskType: row.taskType,
+          intervalSeconds: row.intervalSeconds,
+          isEnabled: row.isEnabled
+        };
+        this.dialogVisible = true;
+        this.$nextTick(() => {
+          this.$refs.form.clearValidate();
+        });
+      },
+      async handleDelete(row) {
+        try {
+          await this.$confirm(`确认删除任务 "${row.name}" 吗?`, '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          });
+          await axios.delete(`/api/scheduled_tasks/${row._id}`);
+          this.$message.success('删除成功');
+          this.fetchTaskList();
+        } catch (error) {
+          if (error !== 'cancel') {
+            this.$message.error('删除失败');
+            console.error('Error deleting task:', error);
+          }
+        }
+      },
+      async handleBatchDelete() {
+        if (this.selectedTasks.length === 0) {
+          this.$message.warning('请至少选择一个任务进行删除');
+          return;
+        }
+
+        try {
+          await this.$confirm(`确认删除选中的 ${this.selectedTasks.length} 个任务吗?`, '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          });
+
+          const ids = this.selectedTasks.map(task => task._id);
+          await axios.post('/api/scheduled_tasks/batchDelete', { ids });
+          this.$message.success('批量删除成功');
+          this.fetchTaskList();
+        } catch (error) {
+          if (error !== 'cancel') {
+            this.$message.error('批量删除失败');
+            console.error('Error batch deleting tasks:', error);
+          }
+        }
+      },
+      async handleSubmit() {
+        this.$refs.form.validate(async (valid) => {
+          if (valid) {
+            try {
+              const taskData = { ...this.form };
+              delete taskData.id;
+
+              if (this.form.id) {
+                await axios.put(`/api/scheduled_tasks/${this.form.id}`, taskData);
+              } else {
+                await axios.post('/api/scheduled_tasks', taskData);
+              }
+              this.$message.success(this.form.id ? '更新成功' : '创建成功');
+              this.dialogVisible = false;
+              this.fetchTaskList();
+            } catch (error) {
+              const message = error.response?.data?.error || (this.form.id ? '更新失败' : '创建失败');
+              this.$message.error(message);
+              console.error('Error submitting task:', error);
+            }
+          }
+        });
+      },
+      async toggleEnable(row) {
+        try {
+          const message = row.isEnabled ? `确认启用任务 "${row.name}" 吗?` : `确认禁用任务 "${row.name}" 吗?`;
+          await this.$confirm(message, '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          });
+
+          await axios.post(`/api/scheduled_tasks/${row._id}/toggleEnable`, { isEnabled: row.isEnabled });
+          this.$message.success(row.isEnabled ? '任务已启用' : '任务已禁用');
+          this.fetchTaskList();
+        } catch (error) {
+          row.isEnabled = !row.isEnabled;
+          if (error !== 'cancel') {
+            this.$message.error('操作失败');
+            console.error('Error toggling task enable status:', error);
+          }
+        }
+      },
+      formatDateTime(timestamp) {
+        if (!timestamp) return 'N/A';
+        const date = new Date(timestamp);
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+      }
+    }
+  });
+  </script>
+</body>
+</html> 
