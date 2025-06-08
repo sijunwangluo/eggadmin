@@ -30,6 +30,9 @@ module.exports = app => {
   router.get('/setting-content', auth, app.controller.setting.showSettingContentPage);
   router.get('/article-content', auth, app.controller.article.showArticleContentPage);
 
+  // 会员管理内容页
+  router.get('/member-content', auth, controller.member.showMemberContentPage);
+
   // 文章管理 API
   router.get('/api/articles', auth, controller.article.index);
   router.post('/api/articles', auth, controller.article.create);
@@ -43,6 +46,13 @@ module.exports = app => {
   router.put('/api/tags/:id', auth, controller.tag.update);
   router.delete('/api/tags/:id', auth, controller.tag.destroy);
   router.post('/api/tags/batchDelete', auth, controller.tag.batchDestroy);
+
+  // 会员管理 API
+  router.get('/api/members', auth, controller.member.index);
+  router.post('/api/members', auth, controller.member.create);
+  router.put('/api/members/:id', auth, controller.member.update);
+  router.delete('/api/members/:id', auth, controller.member.destroy);
+  router.post('/api/members/batchDelete', auth, controller.member.batchDestroy);
 
   // 标签管理内容页
   router.get('/tag-content', auth, controller.tag.showTagContentPage);

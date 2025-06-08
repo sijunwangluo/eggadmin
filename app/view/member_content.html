@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>会员管理</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+  <style>
+    .member-content-card {
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+      background-color: #fff;
+    }
+
+    .member-dialog .el-dialog__body {
+      padding-top: 10px;
+    }
+
+    .member-table-shadow {
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  {% raw %}
+  <div class="member-content-card">
+    <div class="operation-bar">
+      <el-input
+        v-model="searchKeyword"
+        placeholder="搜索会员账号/姓名/手机/邮箱"
+        style="width: 300px; margin-right: 16px;"
+        clearable
+        @clear="handleSearch"
+        @keyup.enter.native="handleSearch">
+        <el-button slot="append" icon="el-icon-search" @click="handleSearch"></el-button>
+      </el-input>
+      <el-button type="primary" @click="handleAdd" round>添加会员</el-button>
+      <el-button type="danger" @click="handleBatchDelete" :disabled="selectedMembers.length === 0" round>批量删除</el-button>
+    </div>
+
+    <el-table :data="memberList" style="width: 100%;margin-top:18px;" border v-loading="loading" class="member-table-shadow" @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="55"></el-table-column>
+      <el-table-column prop="account" label="账号" width="120"></el-table-column>
+      <el-table-column prop="name" label="姓名" width="100"></el-table-column>
+      <el-table-column prop="phone" label="手机号" width="120"></el-table-column>
+      <el-table-column prop="email" label="邮箱" width="180"></el-table-column>
+      <el-table-column prop="idCardNumber" label="身份证号" width="180"></el-table-column>
+      <el-table-column prop="walletBalance" label="钱包余额" width="100"></el-table-column>
+      <el-table-column prop="points" label="积分" width="100"></el-table-column>
+      <el-table-column prop="gender" label="性别" width="80">
+        <template slot-scope="scope">
+          {{ scope.row.gender === 'male' ? '男' : scope.row.gender === 'female' ? '女' : '未知' }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="registrationTime" label="注册时间" width="180">
+        <template slot-scope="scope">
+          {{ new Date(scope.row.registrationTime).toLocaleString() }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="ipAddress" label="注册IP" width="120"></el-table-column>
+      <el-table-column label="操作" width="200" align="center" fixed="right">
+        <template slot-scope="scope">
+          <el-button size="mini" type="primary" @click="handleEdit(scope.row)" round>编辑</el-button>
+          <el-button size="mini" type="danger" @click="handleDelete(scope.row)" round>删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <div class="pagination-container" style="margin-top: 20px; text-align: right;">
+      <el-pagination
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        :current-page="pagination.page"
+        :page-sizes="[5, 10, 20, 50]"
+        :page-size="pagination.pageSize"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="pagination.total">
+      </el-pagination>
+    </div>
+
+    <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" custom-class="member-dialog" width="600px">
+      <el-form :model="form" :rules="rules" ref="form" label-width="100px">
+        <el-form-item label="账号" prop="account">
+          <el-input v-model="form.account" placeholder="请输入会员账号" :disabled="!!form._id"></el-input>
+        </el-form-item>
+        <el-form-item label="密码" prop="password">
+          <el-input type="password" v-model="form.password" placeholder="请输入密码" autocomplete="off"></el-input>
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirmPassword" v-if="!form._id || form.password">
+          <el-input type="password" v-model="form.confirmPassword" placeholder="请再次输入密码" autocomplete="off"></el-input>
+        </el-form-item>
+        <el-form-item label="姓名" prop="name">
+          <el-input v-model="form.name" placeholder="请输入会员姓名"></el-input>
+        </el-form-item>
+        <el-form-item label="手机号" prop="phone">
+          <el-input v-model="form.phone" placeholder="请输入手机号"></el-input>
+        </el-form-item>
+        <el-form-item label="邮箱" prop="email">
+          <el-input v-model="form.email" placeholder="请输入邮箱"></el-input>
+        </el-form-item>
+        <el-form-item label="身份证号" prop="idCardNumber">
+          <el-input v-model="form.idCardNumber" placeholder="请输入身份证号"></el-input>
+        </el-form-item>
+        <el-form-item label="钱包余额" prop="walletBalance">
+          <el-input-number v-model="form.walletBalance" :min="0" :precision="2" style="width: 100%;"></el-input-number>
+        </el-form-item>
+        <el-form-item label="用户积分" prop="points">
+          <el-input-number v-model="form.points" :min="0" :precision="0" style="width: 100%;"></el-input-number>
+        </el-form-item>
+        <el-form-item label="性别" prop="gender">
+          <el-select v-model="form.gender" placeholder="请选择性别" style="width: 100%;">
+            <el-option label="男" value="male"></el-option>
+            <el-option label="女" value="female"></el-option>
+            <el-option label="未知" value="unknown"></el-option>
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="dialogVisible = false" round>取 消</el-button>
+        <el-button type="primary" @click="handleSubmit" round>确 定</el-button>
+      </div>
+    </el-dialog>
+  </div>
+  {% endraw %}
+
+  <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
+  <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script src="/public/js/member.js"></script>
+</body>
+</html> 
