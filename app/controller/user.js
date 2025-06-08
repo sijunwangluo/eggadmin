@@ -34,6 +34,7 @@ class UserController extends Controller {
           pageSize: parseInt(pageSize)
         }
       };
+      ctx.service.log.record('User', 'search', null, { keyword });
     } catch (error) {
       ctx.logger.error('获取用户列表失败:', error);
       ctx.status = 500;
@@ -97,6 +98,7 @@ class UserController extends Controller {
       // 返回用户信息时不包含密码
       const { password, ...userInfo } = user.toObject();
       ctx.body = userInfo;
+      ctx.service.log.record('User', 'create', user._id, { username: userInfo.username, email: userInfo.email, role: userInfo.role });
     } catch (error) {
       ctx.logger.error('创建用户失败:', error);
       if (error.code === 11000) {
@@ -149,6 +151,11 @@ class UserController extends Controller {
       // 返回更新后的用户信息（不包含密码）
       const { password, ...userInfo } = updatedUser.toObject();
       ctx.body = userInfo;
+      const changes = {};
+      if (user.username !== updatedUser.username) changes.username = { old: user.username, new: updatedUser.username };
+      if (user.email !== updatedUser.email) changes.email = { old: user.email, new: updatedUser.email };
+      if (user.role !== updatedUser.role) changes.role = { old: user.role, new: updatedUser.role };
+      ctx.service.log.record('User', 'update', updatedUser._id, changes);
     } catch (error) {
       ctx.logger.error('更新用户失败:', error);
       ctx.status = 500;
@@ -168,6 +175,7 @@ class UserController extends Controller {
         return;
       }
       ctx.body = { message: '删除成功' };
+      ctx.service.log.record('User', 'delete', id, { username: user.username });
     } catch (error) {
       ctx.status = 500;
       ctx.body = { error: '删除用户失败' };
@@ -234,6 +242,7 @@ class UserController extends Controller {
         return;
       }
       ctx.body = { message: `成功删除了 ${result.deletedCount} 个用户` };
+      ctx.service.log.record('User', 'batch_delete', null, { deletedCount: result.deletedCount, ids });
     } catch (error) {
       ctx.status = 500;
       ctx.body = { error: '批量删除用户失败: ' + error.message };

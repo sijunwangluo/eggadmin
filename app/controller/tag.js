@@ -14,6 +14,7 @@ class TagController extends Controller {
         .skip((page - 1) * pageSize)
         .limit(parseInt(pageSize));
       ctx.body = { list, pagination: { total, page: parseInt(page), pageSize: parseInt(pageSize) } };
+      ctx.service.log.record('Tag', 'search', null, { keyword });
     } catch (error) {
       ctx.status = 500;
       ctx.body = { error: '获取标签失败' };
@@ -31,6 +32,7 @@ class TagController extends Controller {
     try {
       const tag = await ctx.model.Tag.create({ name, description });
       ctx.body = tag;
+      ctx.service.log.record('Tag', 'create', tag._id, { name, description });
     } catch (error) {
       ctx.status = 500;
       ctx.body = { error: '创建标签失败: ' + error.message };
@@ -42,6 +44,7 @@ class TagController extends Controller {
     const id = ctx.params.id;
     const { name, description } = ctx.request.body;
     try {
+      const oldTag = await ctx.model.Tag.findById(id);
       const tag = await ctx.model.Tag.findByIdAndUpdate(
         id,
         { name, description },
@@ -53,6 +56,10 @@ class TagController extends Controller {
         return;
       }
       ctx.body = tag;
+      const changes = {};
+      if (oldTag.name !== name) changes.name = { old: oldTag.name, new: name };
+      if (oldTag.description !== description) changes.description = { old: oldTag.description, new: description };
+      ctx.service.log.record('Tag', 'update', tag._id, changes);
     } catch (error) {
       ctx.status = 500;
       ctx.body = { error: '更新标签失败: ' + error.message };
@@ -70,6 +77,7 @@ class TagController extends Controller {
         return;
       }
       ctx.body = { message: '标签删除成功' };
+      ctx.service.log.record('Tag', 'delete', id, { name: tag.name });
     } catch (error) {
       ctx.status = 500;
       ctx.body = { error: '删除标签失败: ' + error.message };
@@ -93,6 +101,7 @@ class TagController extends Controller {
         return;
       }
       ctx.body = { message: `成功删除了 ${result.deletedCount} 个标签` };
+      ctx.service.log.record('Tag', 'batch_delete', null, { deletedCount: result.deletedCount, ids });
     } catch (error) {
       ctx.status = 500;
       ctx.body = { error: '批量删除标签失败: ' + error.message };

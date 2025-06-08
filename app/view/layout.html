@@ -86,6 +86,10 @@
             <i class="el-icon-collection-tag"></i>
             <span slot="title">标签管理</span>
           </el-menu-item>
+          <el-menu-item index="/log">
+            <i class="el-icon-document"></i>
+            <span slot="title">日志管理</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       <el-container>
@@ -150,6 +154,8 @@
             this.currentPath = '/article-content';
           } else if (key === '/tag') {
             this.currentPath = '/tag-content';
+          } else if (key === '/log') {
+            this.currentPath = '/log-content';
           }
         },
         handleCommand(command) {

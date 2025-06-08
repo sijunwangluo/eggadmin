@@ -46,4 +46,10 @@ module.exports = app => {
 
   // 标签管理内容页
   router.get('/tag-content', auth, controller.tag.showTagContentPage);
+
+  // 日志管理 API
+  router.get('/api/logs', auth, controller.log.index);
+
+  // 日志管理内容页
+  router.get('/log-content', auth, controller.log.showLogContentPage);
 };

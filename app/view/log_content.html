@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+  <style>
+  .log-content-card {
+    max-width: 1200px;
+    margin: 40px auto 0 auto;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    padding: 32px 28px 32px 28px;
+  }
+  .operation-bar {
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .log-table-shadow {
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+  .el-tag {
+    margin-right: 4px;
+  }
+  </style>
+</head>
+<body>
+  <div class="log-content-card">
+    <h2>日志管理</h2>
+    <div class="operation-bar">
+      <el-input
+        v-model="searchKeyword"
+        placeholder="搜索用户名、模块、动作或实体ID"
+        style="width: 280px;"
+        clearable
+        @clear="handleSearch"
+        @keyup.enter.native="handleSearch">
+        <el-button slot="append" icon="el-icon-search" @click="handleSearch"></el-button>
+      </el-input>
+      <el-select v-model="searchModule" placeholder="筛选模块" clearable @change="handleSearch">
+        <el-option label="用户" value="User"></el-option>
+        <el-option label="文章" value="Article"></el-option>
+        <el-option label="标签" value="Tag"></el-option>
+      </el-select>
+      <el-select v-model="searchAction" placeholder="筛选动作" clearable @change="handleSearch">
+        <el-option label="创建" value="create"></el-option>
+        <el-option label="更新" value="update"></el-option>
+        <el-option label="删除" value="delete"></el-option>
+        <el-option label="批量删除" value="batch_delete"></el-option>
+        <el-option label="搜索" value="search"></el-option>
+      </el-select>
+    </div>
+
+    <el-table :data="logList" style="width: 100%;margin-top:18px;" border v-loading="loading" class="log-table-shadow">
+      <el-table-column prop="username" label="操作用户" width="120"></el-table-column>
+      <el-table-column prop="module" label="模块" width="100"></el-table-column>
+      <el-table-column prop="action" label="动作" width="120"></el-table-column>
+      <el-table-column prop="entityId" label="实体ID" width="220"></el-table-column>
+      <el-table-column prop="details" label="详情">
+        {% raw %}
+        <template slot-scope="scope">
+          <pre style="white-space: pre-wrap;">{{ JSON.stringify(scope.row.details, null, 2) }}</pre>
+        </template>
+        {% endraw %}
+      </el-table-column>
+      <el-table-column prop="ipAddress" label="IP地址" width="120"></el-table-column>
+      <el-table-column prop="timestamp" label="时间" width="180"></el-table-column>
+    </el-table>
+
+    <!-- 分页组件 -->
+    <div class="pagination-container" style="margin-top: 20px; text-align: right;">
+      <el-pagination
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        :current-page="pagination.page"
+        :page-sizes="[10, 20, 50, 100]"
+        :page-size="pagination.pageSize"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="pagination.total">
+      </el-pagination>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
+  <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  {% raw %}
+  <script>
+  // 日志管理页面的 Vue 实例
+  const logApp = new Vue({
+    el: '.log-content-card',
+    data() {
+      return {
+        logList: [],
+        searchKeyword: '',
+        searchModule: '',
+        searchAction: '',
+        loading: false,
+        pagination: {
+          total: 0,
+          page: 1,
+          pageSize: 10
+        }
+      }
+    },
+    created() {
+      this.fetchLogList();
+    },
+    methods: {
+      async fetchLogList() {
+        this.loading = true;
+        try {
+          const response = await axios.get('/api/logs', {
+            params: {
+              keyword: this.searchKeyword,
+              module: this.searchModule,
+              action: this.searchAction,
+              page: this.pagination.page,
+              pageSize: this.pagination.pageSize
+            }
+          });
+          this.logList = response.data.list.map(log => ({
+            ...log,
+            username: log.userId ? log.userId.username : log.username, // 使用populate后的username
+            timestamp: new Date(log.timestamp).toLocaleString() // 格式化时间
+          }));
+          this.pagination.total = response.data.pagination.total;
+          this.pagination.page = response.data.pagination.page;
+          this.pagination.pageSize = response.data.pagination.pageSize;
+        } catch (error) {
+          this.$message.error('获取日志列表失败');
+        } finally {
+          this.loading = false;
+        }
+      },
+      handleSizeChange(val) {
+        this.pagination.pageSize = val;
+        this.fetchLogList();
+      },
+      handleCurrentChange(val) {
+        this.pagination.page = val;
+        this.fetchLogList();
+      },
+      handleSearch() {
+        this.pagination.page = 1; // 搜索时重置到第一页
+        this.fetchLogList();
+      }
+    }
+  });
+  </script>
+  {% endraw %}
+</body>
+</html> 
