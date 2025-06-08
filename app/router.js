@@ -11,6 +11,11 @@ module.exports = app => {
   router.post('/api/login', controller.login.login);
   router.post('/api/logout', controller.login.logout);
 
+  // 初始化管理员账号（仅开发环境可用）
+  if (app.config.env === 'local') {
+    router.get('/init-admin', controller.user.initAdmin);
+  }
+
   // 需要登录验证的路由
   const auth = middleware.auth();
   router.get('/', auth, controller.home.index);

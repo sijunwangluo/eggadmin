@@ -5,12 +5,9 @@ module.exports = () => {
     // 检查是否已登录
     if (!ctx.session.user) {
       // 如果是API请求，返回JSON响应
-      if (ctx.path.startsWith('/api/')) {
+      if (ctx.request.path.startsWith('/api/')) {
         ctx.status = 401;
-        ctx.body = {
-          success: false,
-          message: '请先登录'
-        };
+        ctx.body = { error: '请先登录' };
         return;
       }
       // 如果是页面请求，重定向到登录页
