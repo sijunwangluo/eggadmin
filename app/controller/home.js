@@ -9,6 +9,11 @@ class HomeController extends Controller {
       csrf: this.ctx.csrf
     });
   }
+
+  async showHomeContentPage() {
+    const { ctx } = this;
+    await ctx.render('home_content.html');
+  }
 }
 
 module.exports = HomeController;

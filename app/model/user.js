@@ -20,10 +20,8 @@ module.exports = app => {
     },
     email: { 
       type: String, 
-      required: true, 
-      unique: true,
-      trim: true,
-      lowercase: true
+      required: true,
+      trim: true
     },
     role: { 
       type: String, 
@@ -40,7 +38,8 @@ module.exports = app => {
   UserSchema.pre('save', async function(next) {
     if (this.isModified('password')) {
       try {
-        this.password = await bcrypt.hash(this.password, 10);
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
       } catch (error) {
         return next(error);
       }

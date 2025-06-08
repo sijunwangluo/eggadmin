@@ -99,29 +99,41 @@ class UserController extends Controller {
     delete userData.password;
     
     try {
-      const user = await ctx.model.User.findByIdAndUpdate(
-        id,
-        { $set: userData },
-        { new: true, runValidators: true }
-      );
-      
+      // 检查用户是否存在
+      const user = await ctx.model.User.findById(id);
       if (!user) {
         ctx.status = 404;
         ctx.body = { error: '用户不存在' };
         return;
       }
-      
-      // 返回更新后的用户信息，不包含密码
-      const { password, ...userInfo } = user.toObject();
+
+      // 只检查用户名是否被其他用户使用
+      if (userData.username && userData.username !== user.username) {
+        const existingUser = await ctx.model.User.findOne({
+          username: userData.username,
+          _id: { $ne: id } // 排除当前用户
+        });
+        if (existingUser) {
+          ctx.status = 400;
+          ctx.body = { error: '用户名已被其他用户使用' };
+          return;
+        }
+      }
+
+      // 更新用户信息
+      const updatedUser = await ctx.model.User.findByIdAndUpdate(
+        id,
+        { $set: userData },
+        { new: true }
+      );
+
+      // 返回更新后的用户信息（不包含密码）
+      const { password, ...userInfo } = updatedUser.toObject();
       ctx.body = userInfo;
     } catch (error) {
-      if (error.code === 11000) {
-        ctx.status = 400;
-        ctx.body = { error: '用户名或邮箱已存在' };
-      } else {
-        ctx.status = 500;
-        ctx.body = { error: '更新用户失败' };
-      }
+      ctx.logger.error('更新用户失败:', error);
+      ctx.status = 500;
+      ctx.body = { error: '更新用户失败: ' + error.message };
     }
   }
 
@@ -171,6 +183,19 @@ class UserController extends Controller {
       ctx.status = 500;
       ctx.body = { error: '创建管理员账号失败' };
     }
+  }
+
+  async showUserPage() {
+    const { ctx } = this;
+    await ctx.render('user.html', {
+      active: 'user',
+      user: ctx.session.user
+    });
+  }
+
+  async showUserContentPage() {
+    const { ctx } = this;
+    await ctx.render('user_content.html');
   }
 }
 

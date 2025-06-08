@@ -19,8 +19,12 @@ module.exports = app => {
   // 需要登录验证的路由
   const auth = middleware.auth();
   router.get('/', auth, controller.home.index);
+  router.get('/user', auth, controller.user.showUserPage);
   router.get('/api/users', auth, controller.user.index);
   router.post('/api/users', auth, controller.user.create);
   router.put('/api/users/:id', auth, controller.user.update);
   router.delete('/api/users/:id', auth, controller.user.destroy);
+  router.get('/user-content', auth, controller.user.showUserContentPage);
+  router.get('/home-content', auth, app.controller.home.showHomeContentPage);
+  router.get('/setting-content', auth, app.controller.setting.showSettingContentPage);
 };

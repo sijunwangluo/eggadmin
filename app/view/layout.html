@@ -6,271 +6,6 @@
   <title>后台管理系统</title>
   <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
   <link rel="stylesheet" href="/public/css/main.css">
-</head>
-<body>
-  <div id="app">
-    <el-container>
-      <el-aside width="200px">
-        <el-menu
-          :default-active="activeIndex"
-          class="el-menu-vertical"
-          background-color="#545c64"
-          text-color="#fff"
-          active-text-color="#ffd04b"
-          @select="handleSelect">
-          <el-menu-item index="home">
-            <i class="el-icon-menu"></i>
-            <span slot="title">首页</span>
-          </el-menu-item>
-          <el-menu-item index="user">
-            <i class="el-icon-user"></i>
-            <span slot="title">用户管理</span>
-          </el-menu-item>
-          <el-menu-item index="setting">
-            <i class="el-icon-setting"></i>
-            <span slot="title">系统设置</span>
-          </el-menu-item>
-        </el-menu>
-      </el-aside>
-      <el-container>
-        <el-header>
-          <div class="header-title">
-            <i class="el-icon-s-platform"></i>
-            后台管理系统
-          </div>
-          <div class="header-right">
-            <el-dropdown @command="handleCommand">
-              <span class="el-dropdown-link">
-                <span style="margin-right: 8px;">{{ user.username }}</span>
-                <i class="el-icon-user"></i>
-                <i class="el-icon-arrow-down"></i>
-              </span>
-              <el-dropdown-menu slot="dropdown">
-                <el-dropdown-item command="logout">
-                  <i class="el-icon-switch-button"></i>
-                  退出登录
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </el-dropdown>
-          </div>
-        </el-header>
-        <el-main>
-          <div v-if="currentView === 'home'">
-            <div class="home-container">
-              <h2>欢迎使用后台管理系统</h2>
-            </div>
-          </div>
-          <div v-else-if="currentView === 'user'">
-            <div class="user-container">
-              <div class="operation-bar">
-                <el-input
-                  v-model="searchKeyword"
-                  placeholder="搜索用户名或邮箱"
-                  style="width: 200px; margin-right: 10px;"
-                  clearable
-                  @clear="handleSearch"
-                  @keyup.enter.native="handleSearch">
-                  <el-button slot="append" icon="el-icon-search" @click="handleSearch"></el-button>
-                </el-input>
-                <el-button type="primary" @click="handleAdd">添加用户</el-button>
-              </div>
-
-              <el-table :data="userList" style="width: 100%" border v-loading="loading">
-                <el-table-column prop="_id" label="ID" width="220"></el-table-column>
-                <el-table-column prop="username" label="用户名" width="120"></el-table-column>
-                <el-table-column prop="email" label="邮箱" width="180"></el-table-column>
-                <el-table-column prop="role" label="角色" width="100"></el-table-column>
-                <el-table-column prop="createTime" label="创建时间" width="180"></el-table-column>
-                <el-table-column label="操作" width="150">
-                  <template slot-scope="scope">
-                    <el-button size="mini" @click="handleEdit(scope.row)">编辑</el-button>
-                    <el-button size="mini" type="danger" @click="handleDelete(scope.row)">删除</el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
-
-              <!-- 添加/编辑用户对话框 -->
-              <el-dialog :title="dialogTitle" :visible.sync="dialogVisible">
-                <el-form :model="form" :rules="rules" ref="form" label-width="80px">
-                  <el-form-item label="用户名" prop="username">
-                    <el-input v-model="form.username"></el-input>
-                  </el-form-item>
-                  <el-form-item label="邮箱" prop="email">
-                    <el-input v-model="form.email"></el-input>
-                  </el-form-item>
-                  <el-form-item label="密码" prop="password" v-if="!form.id">
-                    <el-input type="password" v-model="form.password"></el-input>
-                  </el-form-item>
-                  <el-form-item label="角色" prop="role">
-                    <el-select v-model="form.role" placeholder="请选择角色">
-                      <el-option label="管理员" value="admin"></el-option>
-                      <el-option label="普通用户" value="user"></el-option>
-                    </el-select>
-                  </el-form-item>
-                </el-form>
-                <div slot="footer" class="dialog-footer">
-                  <el-button @click="dialogVisible = false">取 消</el-button>
-                  <el-button type="primary" @click="handleSubmit">确 定</el-button>
-                </div>
-              </el-dialog>
-            </div>
-          </div>
-          <div v-else-if="currentView === 'setting'">
-            <div class="setting-container">
-              <h2>系统设置</h2>
-              <!-- 系统设置内容 -->
-            </div>
-          </div>
-        </el-main>
-      </el-container>
-    </el-container>
-  </div>
-
-  <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
-  <script src="https://unpkg.com/element-ui/lib/index.js"></script>
-  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-  <script>
-    // 配置 axios 默认值
-    axios.defaults.headers.common['x-csrf-token'] = '{{ csrf }}';
-    
-    // 主 Vue 实例
-    new Vue({
-      el: '#app',
-      data: {
-        activeIndex: 'home',
-        currentView: 'home',
-        currentUser: {
-          username: '{{ user.username }}'
-        },
-        userList: [],
-        searchKeyword: '',
-        loading: false,
-        dialogVisible: false,
-        dialogTitle: '',
-        form: {
-          id: '',
-          username: '',
-          email: '',
-          password: '',
-          role: 'user'
-        },
-        rules: {
-          username: [
-            { required: true, message: '请输入用户名', trigger: 'blur' },
-            { min: 3, max: 20, message: '长度在 3 到 20 个字符', trigger: 'blur' }
-          ],
-          email: [
-            { required: true, message: '请输入邮箱地址', trigger: 'blur' },
-            { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
-          ],
-          password: [
-            { required: true, message: '请输入密码', trigger: 'blur' },
-            { min: 6, message: '密码长度不能小于6位', trigger: 'blur' }
-          ]
-        }
-      },
-      created() {
-        this.fetchUserList();
-      },
-      methods: {
-        handleSelect(key) {
-          this.activeIndex = key;
-          this.currentView = key;
-        },
-        handleCommand(command) {
-          if (command === 'logout') {
-            this.$confirm('确认退出登录吗?', '提示', {
-              confirmButtonText: '确定',
-              cancelButtonText: '取消',
-              type: 'warning'
-            }).then(() => {
-              axios.post('/api/logout').then(response => {
-                if (response.data.success) {
-                  window.location.href = '/login';
-                }
-              });
-            }).catch(() => {});
-          }
-        },
-        async fetchUserList() {
-          this.loading = true;
-          try {
-            const response = await axios.get('/api/users', {
-              params: { keyword: this.searchKeyword }
-            });
-            this.userList = response.data;
-          } catch (error) {
-            this.$message.error('获取用户列表失败');
-          } finally {
-            this.loading = false;
-          }
-        },
-        handleSearch() {
-          this.fetchUserList();
-        },
-        handleAdd() {
-          this.dialogTitle = '添加用户';
-          this.form = {
-            id: '',
-            username: '',
-            email: '',
-            password: '',
-            role: 'user'
-          };
-          this.dialogVisible = true;
-        },
-        handleEdit(row) {
-          this.dialogTitle = '编辑用户';
-          this.form = { ...row };
-          this.dialogVisible = true;
-        },
-        async handleDelete(row) {
-          try {
-            await this.$confirm('确认删除该用户吗?', '提示', {
-              confirmButtonText: '确定',
-              cancelButtonText: '取消',
-              type: 'warning'
-            });
-            
-            await axios.delete(`/api/users/${row._id}`);
-            this.$message.success('删除成功');
-            this.fetchUserList();
-          } catch (error) {
-            if (error !== 'cancel') {
-              this.$message.error('删除失败');
-            }
-          }
-        },
-        async handleSubmit() {
-          this.$refs.form.validate(async (valid) => {
-            if (valid) {
-              try {
-                const userData = { ...this.form };
-                // 如果是创建新用户，删除id字段
-                if (!this.form.id) {
-                  delete userData.id;
-                }
-                console.log('提交的用户数据:', userData);
-                if (this.form.id) {
-                  await axios.put(`/api/users/${this.form.id}`, userData);
-                } else {
-                  const response = await axios.post('/api/users', userData);
-                  console.log('创建用户响应:', response.data);
-                }
-                this.$message.success(this.form.id ? '更新成功' : '创建成功');
-                this.dialogVisible = false;
-                this.fetchUserList();
-              } catch (error) {
-                console.error('创建用户错误:', error.response?.data || error);
-                const message = error.response?.data?.error || (this.form.id ? '更新失败' : '创建失败');
-                this.$message.error(message);
-              }
-            }
-          });
-        }
-      }
-    });
-  </script>
   <style>
     .el-header {
       background-color: #fff;
@@ -309,9 +44,116 @@
     .el-dropdown-menu__item i {
       margin-right: 5px;
     }
-    .operation-bar {
-      margin-bottom: 20px;
+    .main-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    .el-main {
+      padding: 0;
+      height: calc(100vh - 60px);
     }
   </style>
+</head>
+<body>
+  <div id="app">
+    <el-container>
+      <el-aside width="200px">
+        <el-menu
+          :default-active="activeIndex"
+          class="el-menu-vertical"
+          background-color="#545c64"
+          text-color="#fff"
+          active-text-color="#ffd04b"
+          @select="handleSelect">
+          <el-menu-item index="/">
+            <i class="el-icon-menu"></i>
+            <span slot="title">首页</span>
+          </el-menu-item>
+          <el-menu-item index="/user">
+            <i class="el-icon-user"></i>
+            <span slot="title">用户管理</span>
+          </el-menu-item>
+          <el-menu-item index="/setting">
+            <i class="el-icon-setting"></i>
+            <span slot="title">系统设置</span>
+          </el-menu-item>
+        </el-menu>
+      </el-aside>
+      <el-container>
+        <el-header>
+          <div class="header-title">
+            <i class="el-icon-s-platform"></i>
+            后台管理系统
+          </div>
+          <div class="header-right">
+            <el-dropdown @command="handleCommand">
+              <span class="el-dropdown-link">
+                <span style="margin-right: 8px;">{{ user.username }}</span>
+                <i class="el-icon-user"></i>
+                <i class="el-icon-arrow-down"></i>
+              </span>
+              <el-dropdown-menu slot="dropdown">
+                <el-dropdown-item command="logout">
+                  <i class="el-icon-switch-button"></i>
+                  退出登录
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </el-dropdown>
+          </div>
+        </el-header>
+        <el-main>
+          <iframe :src="currentPath" class="main-iframe"></iframe>
+        </el-main>
+      </el-container>
+    </el-container>
+  </div>
+
+  <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
+  <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script>
+    // 配置 axios 默认值
+    axios.defaults.headers.common['x-csrf-token'] = '{{ csrf }}';
+    
+    // 主 Vue 实例
+    new Vue({
+      el: '#app',
+      data: {
+        activeIndex: '{{ active }}',
+        currentPath: '/home-content',
+        user: {
+          username: '{{ user.username }}'
+        }
+      },
+      methods: {
+        handleSelect(key) {
+          this.activeIndex = key;
+          if (key === '/user') {
+            this.currentPath = '/user-content';
+          } else if (key === '/') {
+            this.currentPath = '/home-content';
+          } else if (key === '/setting') {
+            this.currentPath = '/setting-content';
+          }
+        },
+        handleCommand(command) {
+          if (command === 'logout') {
+            this.$confirm('确认退出登录吗?', '提示', {
+              confirmButtonText: '确定',
+              cancelButtonText: '取消',
+              type: 'warning'
+            }).then(() => {
+              axios.post('/api/logout').then(response => {
+                if (response.data.success) {
+                  window.location.href = '/login';
+                }
+              });
+            }).catch(() => {});
+          }
+        }
+      }
+    });
+  </script>
 </body>
 </html> 
