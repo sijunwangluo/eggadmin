@@ -24,6 +24,7 @@ module.exports = app => {
   router.post('/api/users', auth, controller.user.create);
   router.put('/api/users/:id', auth, controller.user.update);
   router.delete('/api/users/:id', auth, controller.user.destroy);
+  router.post('/api/users/batchDelete', auth, controller.user.batchDestroy);
   router.get('/user-content', auth, controller.user.showUserContentPage);
   router.get('/home-content', auth, app.controller.home.showHomeContentPage);
   router.get('/setting-content', auth, app.controller.setting.showSettingContentPage);
@@ -34,4 +35,15 @@ module.exports = app => {
   router.post('/api/articles', auth, controller.article.create);
   router.put('/api/articles/:id', auth, controller.article.update);
   router.delete('/api/articles/:id', auth, controller.article.destroy);
+  router.post('/api/articles/batchDelete', auth, controller.article.batchDestroy);
+
+  // 标签管理 API
+  router.get('/api/tags', auth, controller.tag.index);
+  router.post('/api/tags', auth, controller.tag.create);
+  router.put('/api/tags/:id', auth, controller.tag.update);
+  router.delete('/api/tags/:id', auth, controller.tag.destroy);
+  router.post('/api/tags/batchDelete', auth, controller.tag.batchDestroy);
+
+  // 标签管理内容页
+  router.get('/tag-content', auth, controller.tag.showTagContentPage);
 };

@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
   <style>
-  .user-content-card {
-    max-width: 1100px;
+  .tag-content-card {
+    max-width: 800px;
     margin: 40px auto 0 auto;
     background: #fff;
     border-radius: 12px;
@@ -18,11 +18,11 @@
     display: flex;
     align-items: center;
   }
-  .user-table-shadow {
+  .tag-table-shadow {
     border-radius: 8px;
     box-shadow: 0 2px 12px rgba(0,0,0,0.06);
   }
-  .user-dialog {
+  .tag-dialog {
     border-radius: 12px !important;
     padding-bottom: 0 !important;
   }
@@ -40,35 +40,27 @@
   </style>
 </head>
 <body>
-  <div class="user-content-card">
+  <div class="tag-content-card">
+    <h2>标签管理</h2>
     <div class="operation-bar">
       <el-input
         v-model="searchKeyword"
-        placeholder="搜索用户名或邮箱"
+        placeholder="搜索标签名"
         style="width: 260px; margin-right: 16px;"
         clearable
         @clear="handleSearch"
         @keyup.enter.native="handleSearch">
         <el-button slot="append" icon="el-icon-search" @click="handleSearch"></el-button>
       </el-input>
-      <el-button type="primary" @click="handleAdd" round>添加用户</el-button>
-      <el-button type="danger" @click="handleBatchDelete" :disabled="selectedUsers.length === 0" round>批量删除</el-button>
+      <el-button type="primary" @click="handleAdd" round>添加标签</el-button>
+      <el-button type="danger" @click="handleBatchDelete" :disabled="selectedTags.length === 0" round>批量删除</el-button>
     </div>
 
-    <el-table :data="userList" style="width: 100%;margin-top:18px;" border v-loading="loading" class="user-table-shadow" @selection-change="handleSelectionChange">
+    <el-table :data="tagList" style="width: 100%;margin-top:18px;" border v-loading="loading" class="tag-table-shadow" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55"></el-table-column>
       <el-table-column prop="_id" label="ID" width="220"></el-table-column>
-      <el-table-column prop="username" label="用户名"></el-table-column>
-      <el-table-column prop="email" label="邮箱"></el-table-column>
-      <el-table-column prop="role" label="角色" width="100">
-        {% raw %}
-        <template slot-scope="scope">
-          <el-tag :type="scope.row.role === 'admin' ? 'danger' : 'success'">
-            {{ scope.row.role === 'admin' ? '管理员' : '普通用户' }}
-          </el-tag>
-        </template>
-        {% endraw %}
-      </el-table-column>
+      <el-table-column prop="name" label="标签名"></el-table-column>
+      <el-table-column prop="description" label="描述"></el-table-column>
       <el-table-column prop="createTime" label="创建时间" width="180"></el-table-column>
       <el-table-column label="操作" width="150">
         {% raw %}
@@ -93,23 +85,14 @@
       </el-pagination>
     </div>
 
-    <!-- 添加/编辑用户对话框 -->
-    <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" custom-class="user-dialog">
+    <!-- 添加/编辑标签对话框 -->
+    <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" custom-class="tag-dialog">
       <el-form :model="form" :rules="rules" ref="form" label-width="80px">
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username"></el-input>
+        <el-form-item label="标签名" prop="name">
+          <el-input v-model="form.name"></el-input>
         </el-form-item>
-        <el-form-item label="邮箱" prop="email">
-          <el-input v-model="form.email"></el-input>
-        </el-form-item>
-        <el-form-item label="密码" prop="password" v-if="!form.id">
-          <el-input type="password" v-model="form.password"></el-input>
-        </el-form-item>
-        <el-form-item label="角色" prop="role">
-          <el-select v-model="form.role" placeholder="请选择角色">
-            <el-option label="管理员" value="admin"></el-option>
-            <el-option label="普通用户" value="user"></el-option>
-          </el-select>
+        <el-form-item label="描述" prop="description">
+          <el-input v-model="form.description"></el-input>
         </el-form-item>
       </el-form>
       <div slot="footer" class="dialog-footer">
@@ -122,18 +105,19 @@
   <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
   <script src="https://unpkg.com/element-ui/lib/index.js"></script>
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  {% raw %}
   <script>
-  // 用户管理页面的 Vue 实例
-  const userApp = new Vue({
-    el: '.user-content-card',
+  // 标签管理页面的 Vue 实例
+  const tagApp = new Vue({
+    el: '.tag-content-card',
     data() {
       return {
-        userList: [],
+        tagList: [],
         searchKeyword: '',
         loading: false,
         dialogVisible: false,
         dialogTitle: '',
-        selectedUsers: [],
+        selectedTags: [],
         pagination: {
           total: 0,
           page: 1,
@@ -141,93 +125,81 @@
         },
         form: {
           id: '',
-          username: '',
-          email: '',
-          password: '',
-          role: 'user'
+          name: '',
+          description: ''
         },
         rules: {
-          username: [
-            { required: true, message: '请输入用户名', trigger: 'blur' },
-            { min: 3, max: 20, message: '长度在 3 到 20 个字符', trigger: 'blur' }
-          ],
-          email: [
-            { required: true, message: '请输入邮箱地址', trigger: 'blur' },
-            { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
-          ],
-          password: [
-            { required: true, message: '请输入密码', trigger: 'blur' },
-            { min: 6, message: '密码长度不能小于 6 个字符', trigger: 'blur' }
-          ],
-          role: [
-            { required: true, message: '请选择用户角色', trigger: 'change' }
+          name: [
+            { required: true, message: '请输入标签名', trigger: 'blur' },
+            { min: 1, max: 30, message: '长度在 1 到 30 个字符', trigger: 'blur' }
           ]
         }
       }
     },
     created() {
-      this.fetchUserList();
+      this.fetchTagList();
     },
     methods: {
-      async fetchUserList() {
+      async fetchTagList() {
         this.loading = true;
         try {
-          const response = await axios.get('/api/users', {
-            params: { 
+          const response = await axios.get('/api/tags', {
+            params: {
               keyword: this.searchKeyword,
               page: this.pagination.page,
               pageSize: this.pagination.pageSize
             }
           });
-          this.userList = response.data.list;
+          this.tagList = response.data.list;
           this.pagination.total = response.data.pagination.total;
           this.pagination.page = response.data.pagination.page;
           this.pagination.pageSize = response.data.pagination.pageSize;
         } catch (error) {
-          this.$message.error('获取用户列表失败');
+          this.$message.error('获取标签列表失败');
         } finally {
           this.loading = false;
         }
       },
       handleSizeChange(val) {
         this.pagination.pageSize = val;
-        this.fetchUserList();
+        this.fetchTagList();
       },
       handleCurrentChange(val) {
         this.pagination.page = val;
-        this.fetchUserList();
+        this.fetchTagList();
       },
       handleSearch() {
-        this.pagination.page = 1; // 搜索时重置到第一页
-        this.fetchUserList();
+        this.pagination.page = 1;
+        this.fetchTagList();
       },
       handleAdd() {
-        this.dialogTitle = '添加用户';
+        this.dialogTitle = '添加标签';
         this.form = {
           id: '',
-          username: '',
-          email: '',
-          password: '',
-          role: 'user'
+          name: '',
+          description: ''
         };
         this.dialogVisible = true;
       },
       handleEdit(row) {
-        this.dialogTitle = '编辑用户';
-        this.form = { ...row };
+        this.dialogTitle = '编辑标签';
+        this.form = {
+          id: row._id,
+          name: row.name,
+          description: row.description
+        };
         this.dialogVisible = true;
       },
       async handleDelete(row) {
         try {
-          await this.$confirm('确认删除该用户吗?', '提示', {
+          await this.$confirm('确认删除该标签吗?', '提示', {
             confirmButtonText: '确定',
             cancelButtonText: '取消',
             type: 'warning'
           });
-          
-          await axios.delete(`/api/users/${row._id}`);
+          await axios.delete(`/api/tags/${row._id}`);
           this.$message.success('删除成功');
-          this.fetchUserList();
+          this.fetchTagList();
         } catch (error) {
           if (error !== 'cancel') {
             this.$message.error('删除失败');
@@ -235,25 +207,25 @@
         }
       },
       handleSelectionChange(selection) {
-        this.selectedUsers = selection;
+        this.selectedTags = selection;
       },
       async handleBatchDelete() {
-        if (this.selectedUsers.length === 0) {
-          this.$message.warning('请至少选择一个用户进行删除');
+        if (this.selectedTags.length === 0) {
+          this.$message.warning('请至少选择一个标签进行删除');
           return;
         }
 
         try {
-          await this.$confirm(`确认删除选中的 ${this.selectedUsers.length} 个用户吗?`, '提示', {
+          await this.$confirm(`确认删除选中的 ${this.selectedTags.length} 个标签吗?`, '提示', {
             confirmButtonText: '确定',
             cancelButtonText: '取消',
             type: 'warning'
           });
 
-          const ids = this.selectedUsers.map(user => user._id);
-          await axios.post('/api/users/batchDelete', { ids });
+          const ids = this.selectedTags.map(tag => tag._id);
+          await axios.post('/api/tags/batchDelete', { ids });
           this.$message.success('批量删除成功');
-          this.fetchUserList();
+          this.fetchTagList();
         } catch (error) {
           if (error !== 'cancel') {
             this.$message.error('批量删除失败');
@@ -264,19 +236,15 @@
         this.$refs.form.validate(async (valid) => {
           if (valid) {
             try {
-              const userData = { ...this.form };
-              // 如果是创建新用户，删除id字段
-              if (!this.form.id) {
-                delete userData.id;
-              }
+              const tagData = { name: this.form.name, description: this.form.description };
               if (this.form.id) {
-                await axios.put(`/api/users/${this.form.id}`, userData);
+                await axios.put(`/api/tags/${this.form.id}`, tagData);
               } else {
-                await axios.post('/api/users', userData);
+                await axios.post('/api/tags', tagData);
               }
               this.$message.success(this.form.id ? '更新成功' : '创建成功');
               this.dialogVisible = false;
-              this.fetchUserList();
+              this.fetchTagList();
             } catch (error) {
               const message = error.response?.data?.error || (this.form.id ? '更新失败' : '创建失败');
               this.$message.error(message);
@@ -287,5 +255,6 @@
     }
   });
   </script>
+  {% endraw %}
 </body>
-</html>
+</html> 

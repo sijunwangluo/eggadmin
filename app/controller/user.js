@@ -216,6 +216,29 @@ class UserController extends Controller {
     const { ctx } = this;
     await ctx.render('user_content.html');
   }
+
+  async batchDestroy() {
+    const { ctx } = this;
+    const { ids } = ctx.request.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      ctx.status = 400;
+      ctx.body = { error: '请提供有效的用户ID数组' };
+      return;
+    }
+
+    try {
+      const result = await ctx.model.User.deleteMany({ _id: { $in: ids } });
+      if (result.deletedCount === 0) {
+        ctx.status = 404;
+        ctx.body = { error: '没有找到要删除的用户' };
+        return;
+      }
+      ctx.body = { message: `成功删除了 ${result.deletedCount} 个用户` };
+    } catch (error) {
+      ctx.status = 500;
+      ctx.body = { error: '批量删除用户失败: ' + error.message };
+    }
+  }
 }
 
 module.exports = UserController; 

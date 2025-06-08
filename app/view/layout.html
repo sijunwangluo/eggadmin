@@ -82,6 +82,10 @@
             <i class="el-icon-setting"></i>
             <span slot="title">系统设置</span>
           </el-menu-item>
+          <el-menu-item index="/tag">
+            <i class="el-icon-collection-tag"></i>
+            <span slot="title">标签管理</span>
+          </el-menu-item>
         </el-menu>
       </el-aside>
       <el-container>
@@ -144,6 +148,8 @@
             this.currentPath = '/setting-content';
           } else if (key === '/article') {
             this.currentPath = '/article-content';
+          } else if (key === '/tag') {
+            this.currentPath = '/tag-content';
           }
         },
         handleCommand(command) {

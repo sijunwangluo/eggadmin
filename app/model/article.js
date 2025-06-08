@@ -9,7 +9,7 @@ module.exports = app => {
     content: { type: String, required: true },
     author: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     status: { type: String, enum: ['draft', 'published'], default: 'draft' },
-    tags: [{ type: String, trim: true }],
+    tags: [{ type: Schema.Types.ObjectId, ref: 'Tag' }],
     createTime: { type: Date, default: Date.now },
     updateTime: { type: Date, default: Date.now },
   });
