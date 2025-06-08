@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
   <style>
-  .user-content-card {
-    max-width: 1100px;
+  .article-content-card {
+    max-width: 1200px;
     margin: 40px auto 0 auto;
     background: #fff;
     border-radius: 12px;
@@ -18,11 +18,11 @@
     display: flex;
     align-items: center;
   }
-  .user-table-shadow {
+  .article-table-shadow {
     border-radius: 8px;
     box-shadow: 0 2px 12px rgba(0,0,0,0.06);
   }
-  .user-dialog {
+  .article-dialog {
     border-radius: 12px !important;
     padding-bottom: 0 !important;
   }
@@ -40,41 +40,40 @@
   </style>
 </head>
 <body>
-  <div class="user-content-card">
+  <div class="article-content-card">
+    <h2>文章管理</h2>
     <div class="operation-bar">
       <el-input
         v-model="searchKeyword"
-        placeholder="搜索用户名或邮箱"
-        style="width: 220px; margin-right: 16px;"
+        placeholder="搜索文章标题或作者"
+        style="width: 260px; margin-right: 16px;"
         clearable
         @clear="handleSearch"
         @keyup.enter.native="handleSearch">
         <el-button slot="append" icon="el-icon-search" @click="handleSearch"></el-button>
       </el-input>
-      <el-button type="primary" @click="handleAdd" round>添加用户</el-button>
+      <el-button type="primary" @click="handleAdd" round>添加文章</el-button>
     </div>
 
-    <el-table :data="userList" style="width: 100%;margin-top:18px;" border v-loading="loading" class="user-table-shadow">
+    <el-table :data="articleList" style="width: 100%;margin-top:18px;" border v-loading="loading" class="article-table-shadow">
       <el-table-column prop="_id" label="ID" width="220"></el-table-column>
-      <el-table-column prop="username" label="用户名"></el-table-column>
-      <el-table-column prop="email" label="邮箱"></el-table-column>
-      <el-table-column prop="role" label="角色" width="100">
-        {% raw %}
+      <el-table-column prop="title" label="标题"></el-table-column>
+      <el-table-column prop="author.username" label="作者" width="120"></el-table-column>
+      <el-table-column prop="status" label="状态" width="100">
         <template slot-scope="scope">
-          <el-tag :type="scope.row.role === 'admin' ? 'danger' : 'success'">
-            {{ scope.row.role === 'admin' ? '管理员' : '普通用户' }}
+          {% raw %}
+          <el-tag :type="scope.row.status === 'published' ? 'success' : 'info'">
+            {{ scope.row.status === 'published' ? '已发布' : '草稿' }}
           </el-tag>
+          {% endraw %}
         </template>
-        {% endraw %}
       </el-table-column>
       <el-table-column prop="createTime" label="创建时间" width="180"></el-table-column>
       <el-table-column label="操作" width="150">
-        {% raw %}
         <template slot-scope="scope">
           <el-button size="mini" @click="handleEdit(scope.row)" round>编辑</el-button>
           <el-button size="mini" type="danger" @click="handleDelete(scope.row)" round>删除</el-button>
         </template>
-        {% endraw %}
       </el-table-column>
     </el-table>
 
@@ -91,22 +90,24 @@
       </el-pagination>
     </div>
 
-    <!-- 添加/编辑用户对话框 -->
-    <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" custom-class="user-dialog">
+    <!-- 添加/编辑文章对话框 -->
+    <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" custom-class="article-dialog">
       <el-form :model="form" :rules="rules" ref="form" label-width="80px">
-        <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username"></el-input>
+        <el-form-item label="标题" prop="title">
+          <el-input v-model="form.title"></el-input>
         </el-form-item>
-        <el-form-item label="邮箱" prop="email">
-          <el-input v-model="form.email"></el-input>
+        <el-form-item label="内容" prop="content">
+          <el-input type="textarea" v-model="form.content" :rows="5"></el-input>
         </el-form-item>
-        <el-form-item label="密码" prop="password" v-if="!form.id">
-          <el-input type="password" v-model="form.password"></el-input>
+        <el-form-item label="状态" prop="status">
+          <el-select v-model="form.status" placeholder="请选择状态">
+            <el-option label="草稿" value="draft"></el-option>
+            <el-option label="已发布" value="published"></el-option>
+          </el-select>
         </el-form-item>
-        <el-form-item label="角色" prop="role">
-          <el-select v-model="form.role" placeholder="请选择角色">
-            <el-option label="管理员" value="admin"></el-option>
-            <el-option label="普通用户" value="user"></el-option>
+        <el-form-item label="标签" prop="tags">
+          <el-select v-model="form.tags" multiple filterable allow-create default-first-option placeholder="请选择文章标签">
+            <!-- 标签选项可根据实际需求从后端获取或预设 -->
           </el-select>
         </el-form-item>
       </el-form>
@@ -120,13 +121,14 @@
   <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
   <script src="https://unpkg.com/element-ui/lib/index.js"></script>
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  {% raw %}
   <script>
-  // 用户管理页面的 Vue 实例
-  const userApp = new Vue({
-    el: '.user-content-card',
+  // 文章管理页面的 Vue 实例
+  const articleApp = new Vue({
+    el: '.article-content-card',
     data() {
       return {
-        userList: [],
+        articleList: [],
         searchKeyword: '',
         loading: false,
         dialogVisible: false,
@@ -138,93 +140,91 @@
         },
         form: {
           id: '',
-          username: '',
-          email: '',
-          password: '',
-          role: 'user'
+          title: '',
+          content: '',
+          status: 'draft',
+          tags: []
         },
         rules: {
-          username: [
-            { required: true, message: '请输入用户名', trigger: 'blur' },
-            { min: 3, max: 20, message: '长度在 3 到 20 个字符', trigger: 'blur' }
+          title: [
+            { required: true, message: '请输入文章标题', trigger: 'blur' },
+            { min: 3, max: 100, message: '长度在 3 到 100 个字符', trigger: 'blur' }
           ],
-          email: [
-            { required: true, message: '请输入邮箱地址', trigger: 'blur' },
-            { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
+          content: [
+            { required: true, message: '请输入文章内容', trigger: 'blur' }
           ],
-          password: [
-            { required: true, message: '请输入密码', trigger: 'blur' },
-            { min: 6, message: '密码长度不能小于 6 个字符', trigger: 'blur' }
-          ],
-          role: [
-            { required: true, message: '请选择用户角色', trigger: 'change' }
+          status: [
+            { required: true, message: '请选择文章状态', trigger: 'change' }
           ]
         }
       }
     },
     created() {
-      this.fetchUserList();
+      this.fetchArticleList();
     },
     methods: {
-      async fetchUserList() {
+      async fetchArticleList() {
         this.loading = true;
         try {
-          const response = await axios.get('/api/users', {
+          const response = await axios.get('/api/articles', {
             params: { 
               keyword: this.searchKeyword,
               page: this.pagination.page,
               pageSize: this.pagination.pageSize
             }
           });
-          this.userList = response.data.list;
+          this.articleList = response.data.list;
           this.pagination.total = response.data.pagination.total;
           this.pagination.page = response.data.pagination.page;
           this.pagination.pageSize = response.data.pagination.pageSize;
         } catch (error) {
-          this.$message.error('获取用户列表失败');
+          this.$message.error('获取文章列表失败');
         } finally {
           this.loading = false;
         }
       },
       handleSizeChange(val) {
         this.pagination.pageSize = val;
-        this.fetchUserList();
+        this.fetchArticleList();
       },
       handleCurrentChange(val) {
         this.pagination.page = val;
-        this.fetchUserList();
+        this.fetchArticleList();
       },
       handleSearch() {
         this.pagination.page = 1; // 搜索时重置到第一页
-        this.fetchUserList();
+        this.fetchArticleList();
       },
       handleAdd() {
-        this.dialogTitle = '添加用户';
+        this.dialogTitle = '添加文章';
         this.form = {
           id: '',
-          username: '',
-          email: '',
-          password: '',
-          role: 'user'
+          title: '',
+          content: '',
+          status: 'draft',
+          tags: []
         };
         this.dialogVisible = true;
       },
       handleEdit(row) {
-        this.dialogTitle = '编辑用户';
-        this.form = { ...row };
+        this.dialogTitle = '编辑文章';
+        this.form = { 
+          ...row,
+          id: row._id  // 确保设置正确的id字段
+        };
         this.dialogVisible = true;
       },
       async handleDelete(row) {
         try {
-          await this.$confirm('确认删除该用户吗?', '提示', {
+          await this.$confirm('确认删除该文章吗?', '提示', {
             confirmButtonText: '确定',
             cancelButtonText: '取消',
             type: 'warning'
           });
           
-          await axios.delete(`/api/users/${row._id}`);
+          await axios.delete(`/api/articles/${row._id}`);
           this.$message.success('删除成功');
-          this.fetchUserList();
+          this.fetchArticleList();
         } catch (error) {
           if (error !== 'cancel') {
             this.$message.error('删除失败');
@@ -235,19 +235,18 @@
         this.$refs.form.validate(async (valid) => {
           if (valid) {
             try {
-              const userData = { ...this.form };
-              // 如果是创建新用户，删除id字段
+              const articleData = { ...this.form };
               if (!this.form.id) {
-                delete userData.id;
+                delete articleData.id;
               }
               if (this.form.id) {
-                await axios.put(`/api/users/${this.form.id}`, userData);
+                await axios.put(`/api/articles/${this.form.id}`, articleData);
               } else {
-                await axios.post('/api/users', userData);
+                await axios.post('/api/articles', articleData);
               }
               this.$message.success(this.form.id ? '更新成功' : '创建成功');
               this.dialogVisible = false;
-              this.fetchUserList();
+              this.fetchArticleList();
             } catch (error) {
               const message = error.response?.data?.error || (this.form.id ? '更新失败' : '创建失败');
               this.$message.error(message);
@@ -258,5 +257,6 @@
     }
   });
   </script>
+  {% endraw %}
 </body>
-</html>
+</html> 

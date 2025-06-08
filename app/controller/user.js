@@ -5,18 +5,37 @@ const Controller = require('egg').Controller;
 class UserController extends Controller {
   async index() {
     const { ctx } = this;
-    const keyword = ctx.query.keyword || '';
-    const query = keyword ? {
-      $or: [
+    const { keyword, page = 1, pageSize = 5 } = ctx.query;
+    const query = {};
+
+    if (keyword) {
+      query.$or = [
         { username: new RegExp(keyword, 'i') },
         { email: new RegExp(keyword, 'i') }
-      ]
-    } : {};
-    
+      ];
+    }
+
     try {
-      const users = await ctx.model.User.find(query, { password: 0 });
-      ctx.body = users;
+      // 计算总数
+      const total = await ctx.model.User.countDocuments(query);
+      
+      // 获取分页数据
+      const users = await ctx.model.User.find(query)
+        .select('-password') // 不返回密码字段
+        .sort({ createTime: -1 })
+        .skip((page - 1) * pageSize)
+        .limit(parseInt(pageSize));
+
+      ctx.body = {
+        list: users,
+        pagination: {
+          total,
+          page: parseInt(page),
+          pageSize: parseInt(pageSize)
+        }
+      };
     } catch (error) {
+      ctx.logger.error('获取用户列表失败:', error);
       ctx.status = 500;
       ctx.body = { error: '获取用户列表失败' };
     }

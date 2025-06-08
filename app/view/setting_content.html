@@ -1,31 +1,41 @@
-<div class="setting-content-card">
-  <h2>系统设置</h2>
-  <el-form label-width="100px" style="max-width:400px;margin:40px auto 0;">
-    <el-form-item label="站点名称">
-      <el-input placeholder="请输入站点名称"></el-input>
-    </el-form-item>
-    <el-form-item label="管理员邮箱">
-      <el-input placeholder="请输入管理员邮箱"></el-input>
-    </el-form-item>
-    <el-form-item>
-      <el-button type="primary" round>保存设置</el-button>
-    </el-form-item>
-  </el-form>
-</div>
-<style>
-.setting-content-card {
-  max-width: 500px;
-  margin: 60px auto 0 auto;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.08);
-  padding: 40px 32px 32px 32px;
-}
-.setting-content-card h2 {
-  font-size: 1.6rem;
-  font-weight: bold;
-  margin-bottom: 24px;
-  color: #222;
-  text-align: center;
-}
-</style> 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+  <style>
+  .setting-content-card {
+    max-width: 500px;
+    margin: 60px auto 0 auto;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    padding: 40px 32px 32px 32px;
+  }
+  .setting-content-card h2 {
+    font-size: 1.6rem;
+    font-weight: bold;
+    margin-bottom: 24px;
+    color: #222;
+    text-align: center;
+  }
+  </style>
+</head>
+<body>
+  <div class="setting-content-card">
+    <h2>系统设置</h2>
+    <el-form label-width="100px" style="max-width:400px;margin:40px auto 0;">
+      <el-form-item label="站点名称">
+        <el-input placeholder="请输入站点名称"></el-input>
+      </el-form-item>
+      <el-form-item label="管理员邮箱">
+        <el-input placeholder="请输入管理员邮箱"></el-input>
+      </el-form-item>
+      <el-form-item>
+        <el-button type="primary" round>保存设置</el-button>
+      </el-form-item>
+    </el-form>
+  </div>
+</body>
+</html> 

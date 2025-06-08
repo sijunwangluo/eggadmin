@@ -27,4 +27,11 @@ module.exports = app => {
   router.get('/user-content', auth, controller.user.showUserContentPage);
   router.get('/home-content', auth, app.controller.home.showHomeContentPage);
   router.get('/setting-content', auth, app.controller.setting.showSettingContentPage);
+  router.get('/article-content', auth, app.controller.article.showArticleContentPage);
+
+  // 文章管理 API
+  router.get('/api/articles', auth, controller.article.index);
+  router.post('/api/articles', auth, controller.article.create);
+  router.put('/api/articles/:id', auth, controller.article.update);
+  router.delete('/api/articles/:id', auth, controller.article.destroy);
 };

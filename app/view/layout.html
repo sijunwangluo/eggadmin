@@ -74,6 +74,10 @@
             <i class="el-icon-user"></i>
             <span slot="title">用户管理</span>
           </el-menu-item>
+          <el-menu-item index="/article">
+            <i class="el-icon-document"></i>
+            <span slot="title">文章管理</span>
+          </el-menu-item>
           <el-menu-item index="/setting">
             <i class="el-icon-setting"></i>
             <span slot="title">系统设置</span>
@@ -138,6 +142,8 @@
             this.currentPath = '/home-content';
           } else if (key === '/setting') {
             this.currentPath = '/setting-content';
+          } else if (key === '/article') {
+            this.currentPath = '/article-content';
           }
         },
         handleCommand(command) {
