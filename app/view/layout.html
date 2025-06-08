@@ -114,7 +114,10 @@
   <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
   <script>
     // 配置 axios 默认值
+    console.log('{{ csrf }}');
     axios.defaults.headers.common['x-csrf-token'] = '{{ csrf }}';
+
+    
     
     // 主 Vue 实例
     new Vue({
