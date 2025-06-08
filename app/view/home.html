@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="home-container">
+  <el-row :gutter="20">
+    <el-col :span="6">
+      <el-card shadow="hover">
+        <div slot="header">
+          <span>用户总数</span>
+        </div>
+        <div class="card-content">
+          <h2>1,234</h2>
+        </div>
+      </el-card>
+    </el-col>
+    <el-col :span="6">
+      <el-card shadow="hover">
+        <div slot="header">
+          <span>今日访问</span>
+        </div>
+        <div class="card-content">
+          <h2>256</h2>
+        </div>
+      </el-card>
+    </el-col>
+    <el-col :span="6">
+      <el-card shadow="hover">
+        <div slot="header">
+          <span>订单数量</span>
+        </div>
+        <div class="card-content">
+          <h2>89</h2>
+        </div>
+      </el-card>
+    </el-col>
+    <el-col :span="6">
+      <el-card shadow="hover">
+        <div slot="header">
+          <span>系统消息</span>
+        </div>
+        <div class="card-content">
+          <h2>12</h2>
+        </div>
+      </el-card>
+    </el-col>
+  </el-row>
+</div>
+{% endblock %} 
