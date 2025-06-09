@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>电影管理</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+  <link rel="stylesheet" href="/public/css/main.css">
+  <style>
+    .container {
+      padding: 20px;
+    }
+    .toolbar {
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+    }
+    .toolbar .el-input, .toolbar .el-select {
+        margin-right: 10px;
+        width: 180px;
+    }
+    .table-poster {
+      width: 80px;
+      height: auto;
+    }
+    .el-tag + .el-tag {
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+  {% raw %}
+  <div id="app" class="container">
+    <div class="toolbar">
+      <el-button type="primary" @click="handleAdd">新增电影</el-button>
+      <el-button type="danger" @click="handleBatchDelete" :disabled="selectedMovies.length === 0">批量删除</el-button>
+      <el-input v-model="searchParams.title" placeholder="按标题搜索" clearable @clear="fetchMovies" @keyup.enter.native="fetchMovies"></el-input>
+      <el-input v-model="searchParams.director" placeholder="按导演搜索" clearable @clear="fetchMovies" @keyup.enter.native="fetchMovies"></el-input>
+      <el-input v-model="searchParams.genre" placeholder="按类型搜索" clearable @clear="fetchMovies" @keyup.enter.native="fetchMovies"></el-input>
+      <el-button type="primary" icon="el-icon-search" @click="fetchMovies">搜索</el-button>
+    </div>
+
+    <el-table
+      :data="movies"
+      style="width: 100%"
+      @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="55"></el-table-column>
+      <el-table-column prop="title" label="标题" width="180"></el-table-column>
+      <el-table-column label="海报" width="100">
+        <template slot-scope="scope">
+          <img :src="scope.row.posterUrl || 'https://via.placeholder.com/80x120?text=No+Poster'" alt="海报" class="table-poster">
+        </template>
+      </el-table-column>
+      <el-table-column prop="director" label="导演" width="120"></el-table-column>
+      <el-table-column label="演员" width="200">
+        <template slot-scope="scope">
+          <span v-if="scope.row.actors && scope.row.actors.length > 0">{{ scope.row.actors.join(', ') }}</span>
+          <span v-else>-</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="类型" width="150">
+        <template slot-scope="scope">
+          <el-tag v-for="tag in scope.row.genre" :key="tag" size="mini">{{ tag }}</el-tag>
+          <span v-if="!scope.row.genre || scope.row.genre.length === 0">-</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="releaseDate" label="上映日期" width="120">
+        <template slot-scope="scope">
+          {{ scope.row.releaseDate ? new Date(scope.row.releaseDate).toLocaleDateString() : '-' }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="duration" label="时长(分钟)" width="100"></el-table-column>
+      <el-table-column prop="rating" label="评分" width="80"></el-table-column>
+      <el-table-column label="操作" width="150" fixed="right">
+        <template slot-scope="scope">
+          <el-button size="mini" @click="handleEdit(scope.row)">编辑</el-button>
+          <el-button size="mini" type="danger" @click="handleDelete(scope.row)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <el-pagination
+      style="margin-top: 20px; text-align: right;"
+      @size-change="handleSizeChange"
+      @current-change="handleCurrentChange"
+      :current-page="pagination.currentPage"
+      :page-sizes="[10, 20, 50, 100]"
+      :page-size="pagination.pageSize"
+      layout="total, sizes, prev, pager, next, jumper"
+      :total="pagination.total">
+    </el-pagination>
+
+    <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" width="60%">
+      <el-form :model="currentMovie" label-width="100px" ref="movieForm">
+        <el-form-item label="标题" prop="title" :rules="[{ required: true, message: '请输入标题', trigger: 'blur' }]">
+          <el-input v-model="currentMovie.title"></el-input>
+        </el-form-item>
+        <el-form-item label="导演" prop="director">
+          <el-input v-model="currentMovie.director"></el-input>
+        </el-form-item>
+        <el-form-item label="演员" prop="actors">
+          <el-select v-model="currentMovie.actors" multiple filterable allow-create default-first-option placeholder="请输入演员名" style="width:100%;">
+          </el-select>
+        </el-form-item>
+        <el-form-item label="类型" prop="genre">
+          <el-select v-model="currentMovie.genre" multiple filterable allow-create default-first-option placeholder="请输入类型" style="width:100%;">
+          </el-select>
+        </el-form-item>
+        <el-form-item label="上映日期" prop="releaseDate">
+          <el-date-picker v-model="currentMovie.releaseDate" type="date" placeholder="选择日期" style="width:100%;"></el-date-picker>
+        </el-form-item>
+        <el-form-item label="时长(分钟)" prop="duration">
+          <el-input-number v-model="currentMovie.duration" :min="0"></el-input-number>
+        </el-form-item>
+        <el-form-item label="海报地址" prop="posterUrl">
+          <el-input v-model="currentMovie.posterUrl"></el-input>
+        </el-form-item>
+        <el-form-item label="评分" prop="rating">
+          <el-input-number v-model="currentMovie.rating" :min="0" :max="10" :precision="1" :step="0.1"></el-input-number>
+        </el-form-item>
+        <el-form-item label="简介" prop="description">
+          <el-input type="textarea" v-model="currentMovie.description" :rows="3"></el-input>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="dialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="submitForm">确 定</el-button>
+      </div>
+    </el-dialog>
+  </div>
+  {% endraw %}
+
+  <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
+  <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script>
+    axios.defaults.headers.common['x-csrf-token'] = parent.window.csrfToken;
+    new Vue({
+      el: '#app',
+      data: {
+        movies: [],
+        selectedMovies: [],
+        dialogVisible: false,
+        dialogTitle: '',
+        currentMovie: {
+          title: '',
+          director: '',
+          actors: [],
+          genre: [],
+          releaseDate: null,
+          duration: 0,
+          posterUrl: '',
+          description: '',
+          rating: 0
+        },
+        searchParams: {
+            title: '',
+            director: '',
+            genre: ''
+        },
+        pagination: {
+            currentPage: 1,
+            pageSize: 10,
+            total: 0
+        }
+      },
+      created() {
+        this.fetchMovies();
+      },
+      methods: {
+        fetchMovies() {
+          const params = {
+            page: this.pagination.currentPage,
+            limit: this.pagination.pageSize,
+            ...this.searchParams
+          };
+          axios.get('/api/movies', { params })
+            .then(response => {
+              this.movies = response.data.data;
+              this.pagination.total = response.data.total;
+            })
+            .catch(error => {
+              this.$message.error('获取电影列表失败');
+            });
+        },
+        handleAdd() {
+          this.dialogTitle = '新增电影';
+          this.currentMovie = {
+            title: '',
+            director: '',
+            actors: [],
+            genre: [],
+            releaseDate: null,
+            duration: 0,
+            posterUrl: '',
+            description: '',
+            rating: 0
+          };
+          this.dialogVisible = true;
+          this.$nextTick(() => {
+            this.$refs.movieForm.clearValidate();
+          });
+        },
+        handleEdit(movie) {
+          this.dialogTitle = '编辑电影';
+          this.currentMovie = Object.assign({}, movie);
+          // Element UI select multiple value needs to be array
+          if (typeof this.currentMovie.actors === 'string') {
+            this.currentMovie.actors = this.currentMovie.actors ? this.currentMovie.actors.split(',').map(s => s.trim()) : [];
+          }
+          if (typeof this.currentMovie.genre === 'string') {
+            this.currentMovie.genre = this.currentMovie.genre ? this.currentMovie.genre.split(',').map(s => s.trim()) : [];
+          }
+          this.dialogVisible = true;
+          this.$nextTick(() => {
+            this.$refs.movieForm.clearValidate();
+          });
+        },
+        handleDelete(movie) {
+          this.$confirm('此操作将永久删除该电影, 是否继续?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            axios.delete(`/api/movies/${movie._id}`)
+              .then(response => {
+                this.$message.success('删除成功');
+                this.fetchMovies();
+              })
+              .catch(error => {
+                this.$message.error('删除失败');
+              });
+          }).catch(() => {});
+        },
+        handleBatchDelete() {
+          this.$confirm('此操作将永久删除选中的电影, 是否继续?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            const ids = this.selectedMovies.map(item => item._id);
+            axios.post('/api/movies/batchDelete', { ids })
+              .then(response => {
+                this.$message.success(response.data.message || '批量删除成功');
+                this.fetchMovies();
+              })
+              .catch(error => {
+                this.$message.error('批量删除失败');
+              });
+          }).catch(() => {});
+        },
+        submitForm() {
+          this.$refs.movieForm.validate((valid) => {
+            if (valid) {
+              const movieData = { ...this.currentMovie };
+              // Ensure actors and genre are arrays of strings
+              movieData.actors = Array.isArray(movieData.actors) ? movieData.actors.filter(s => typeof s === 'string' && s.trim() !== '') : [];
+              movieData.genre = Array.isArray(movieData.genre) ? movieData.genre.filter(s => typeof s === 'string' && s.trim() !== '') : [];
+
+              if (movieData._id) {
+                // 编辑
+                axios.put(`/api/movies/${movieData._id}`, movieData)
+                  .then(response => {
+                    this.$message.success('更新成功');
+                    this.dialogVisible = false;
+                    this.fetchMovies();
+                  })
+                  .catch(error => {
+                    this.$message.error('更新失败: ' + (error.response?.data?.message || error.message));
+                  });
+              } else {
+                // 新增
+                axios.post('/api/movies', movieData)
+                  .then(response => {
+                    this.$message.success('新增成功');
+                    this.dialogVisible = false;
+                    this.fetchMovies();
+                  })
+                  .catch(error => {
+                    this.$message.error('新增失败: ' + (error.response?.data?.message || error.message));
+                  });
+              }
+            } else {
+              this.$message.error('请检查表单输入');
+              return false;
+            }
+          });
+        },
+        handleSelectionChange(val) {
+          this.selectedMovies = val;
+        },
+        handleSizeChange(val) {
+            this.pagination.pageSize = val;
+            this.fetchMovies();
+        },
+        handleCurrentChange(val) {
+            this.pagination.currentPage = val;
+            this.fetchMovies();
+        }
+      }
+    });
+  </script>
+</body>
+</html>

@@ -83,4 +83,14 @@ module.exports = app => {
 
   // 轮播图管理内容页
   router.get('/carousel-content', auth, controller.carousel.showCarouselContentPage);
+
+  // 电影管理 API
+  router.get('/api/movies', auth, controller.movie.index);
+  router.post('/api/movies', auth, controller.movie.create);
+  router.put('/api/movies/:id', auth, controller.movie.update);
+  router.delete('/api/movies/:id', auth, controller.movie.destroy);
+  router.post('/api/movies/batchDelete', auth, controller.movie.batchDestroy);
+
+  // 电影管理内容页
+  router.get('/movie-content', auth, controller.movie.showMovieContentPage);
 };
