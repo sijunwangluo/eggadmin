@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>轮播图管理</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+  <link rel="stylesheet" href="/public/css/main.css">
+  <style>
+    .container {
+      padding: 20px;
+    }
+    .toolbar {
+      margin-bottom: 20px;
+    }
+    .table-image {
+      width: 100px;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  {% raw %}
+  <div id="app" class="container">
+    <div class="toolbar">
+      <el-button type="primary" @click="handleAdd">新增轮播图</el-button>
+      <el-button type="danger" @click="handleBatchDelete" :disabled="selectedCarousels.length === 0">批量删除</el-button>
+    </div>
+
+    <el-table
+      :data="carousels"
+      style="width: 100%"
+      @selection-change="handleSelectionChange">
+      <el-table-column type="selection" width="55"></el-table-column>
+      <el-table-column prop="title" label="标题"></el-table-column>
+      <el-table-column label="图片">
+        <template slot-scope="scope">
+          <img :src="scope.row.imageUrl" alt="轮播图" class="table-image">
+        </template>
+      </el-table-column>
+      <el-table-column prop="linkUrl" label="跳转链接"></el-table-column>
+      <el-table-column prop="sortOrder" label="排序"></el-table-column>
+      <el-table-column label="是否启用">
+        <template slot-scope="scope">
+          <el-tag :type="scope.row.isEnabled ? 'success' : 'danger'">{{ scope.row.isEnabled ? '是' : '否' }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作">
+        <template slot-scope="scope">
+          <el-button size="mini" @click="handleEdit(scope.row)">编辑</el-button>
+          <el-button size="mini" type="danger" @click="handleDelete(scope.row)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <el-dialog :title="dialogTitle" :visible.sync="dialogVisible">
+      <el-form :model="currentCarousel" label-width="100px">
+        <el-form-item label="标题">
+          <el-input v-model="currentCarousel.title"></el-input>
+        </el-form-item>
+        <el-form-item label="图片地址">
+          <el-input v-model="currentCarousel.imageUrl"></el-input>
+        </el-form-item>
+        <el-form-item label="跳转链接">
+          <el-input v-model="currentCarousel.linkUrl"></el-input>
+        </el-form-item>
+        <el-form-item label="排序">
+          <el-input-number v-model="currentCarousel.sortOrder" :min="0"></el-input-number>
+        </el-form-item>
+        <el-form-item label="是否启用">
+          <el-switch v-model="currentCarousel.isEnabled"></el-switch>
+        </el-form-item>
+      </el-form>
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="dialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="submitForm">确 定</el-button>
+      </div>
+    </el-dialog>
+  </div>
+  {% endraw %}
+
+  <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
+  <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script>
+    axios.defaults.headers.common['x-csrf-token'] = parent.window.csrfToken;
+    new Vue({
+      el: '#app',
+      data: {
+        carousels: [],
+        selectedCarousels: [],
+        dialogVisible: false,
+        dialogTitle: '',
+        currentCarousel: {
+          title: '',
+          imageUrl: '',
+          linkUrl: '',
+          sortOrder: 0,
+          isEnabled: true
+        }
+      },
+      created() {
+        this.fetchCarousels();
+      },
+      methods: {
+        fetchCarousels() {
+          axios.get('/api/carousels')
+            .then(response => {
+              this.carousels = response.data.data;
+            })
+            .catch(error => {
+              this.$message.error('获取轮播图列表失败');
+            });
+        },
+        handleAdd() {
+          this.dialogTitle = '新增轮播图';
+          this.currentCarousel = {
+            title: '',
+            imageUrl: '',
+            linkUrl: '',
+            sortOrder: 0,
+            isEnabled: true
+          };
+          this.dialogVisible = true;
+        },
+        handleEdit(carousel) {
+          this.dialogTitle = '编辑轮播图';
+          this.currentCarousel = Object.assign({}, carousel);
+          this.dialogVisible = true;
+        },
+        handleDelete(carousel) {
+          this.$confirm('此操作将永久删除该轮播图, 是否继续?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            axios.delete(`/api/carousels/${carousel._id}`)
+              .then(response => {
+                this.$message.success('删除成功');
+                this.fetchCarousels();
+              })
+              .catch(error => {
+                this.$message.error('删除失败');
+              });
+          }).catch(() => {});
+        },
+        handleBatchDelete() {
+          this.$confirm('此操作将永久删除选中的轮播图, 是否继续?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            const ids = this.selectedCarousels.map(item => item._id);
+            axios.post('/api/carousels/batchDelete', { ids })
+              .then(response => {
+                this.$message.success(response.data.message || '批量删除成功');
+                this.fetchCarousels();
+              })
+              .catch(error => {
+                this.$message.error('批量删除失败');
+              });
+          }).catch(() => {});
+        },
+        submitForm() {
+          if (this.currentCarousel._id) {
+            // 编辑
+            axios.put(`/api/carousels/${this.currentCarousel._id}`, this.currentCarousel)
+              .then(response => {
+                this.$message.success('更新成功');
+                this.dialogVisible = false;
+                this.fetchCarousels();
+              })
+              .catch(error => {
+                this.$message.error('更新失败');
+              });
+          } else {
+            // 新增
+            axios.post('/api/carousels', this.currentCarousel)
+              .then(response => {
+                this.$message.success('新增成功');
+                this.dialogVisible = false;
+                this.fetchCarousels();
+              })
+              .catch(error => {
+                this.$message.error('新增失败');
+              });
+          }
+        },
+        handleSelectionChange(val) {
+          this.selectedCarousels = val;
+        }
+      }
+    });
+  </script>
+</body>
+</html>

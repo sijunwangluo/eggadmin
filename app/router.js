@@ -73,4 +73,14 @@ module.exports = app => {
   router.delete('/api/scheduled_tasks/:id', auth, controller.scheduledTask.destroy);
   router.post('/api/scheduled_tasks/batchDelete', auth, controller.scheduledTask.batchDestroy);
   router.post('/api/scheduled_tasks/:id/toggleEnable', auth, controller.scheduledTask.toggleEnable);
+
+  // 轮播图管理 API
+  router.get('/api/carousels', auth, controller.carousel.index);
+  router.post('/api/carousels', auth, controller.carousel.create);
+  router.put('/api/carousels/:id', auth, controller.carousel.update);
+  router.delete('/api/carousels/:id', auth, controller.carousel.destroy);
+  router.post('/api/carousels/batchDelete', auth, controller.carousel.batchDestroy);
+
+  // 轮播图管理内容页
+  router.get('/carousel-content', auth, controller.carousel.showCarouselContentPage);
 };
