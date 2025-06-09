@@ -114,3 +114,6 @@ eggadmin/
 ## 许可证
 
 [MIT](LICENSE) (如果项目有 LICENSE 文件，请链接到它，否则可以移除此行或选择一个合适的许可证)
+
+# eggadmin
+小而美的后台管理面板
