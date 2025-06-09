@@ -90,6 +90,7 @@ module.exports = app => {
   router.put('/api/movies/:id', auth, controller.movie.update);
   router.delete('/api/movies/:id', auth, controller.movie.destroy);
   router.post('/api/movies/batchDelete', auth, controller.movie.batchDestroy);
+  router.post('/api/movies/fetch_douban', auth, controller.movie.fetchDouban); // 新增采集豆瓣电影路由
 
   // 电影管理内容页
   router.get('/movie-content', auth, controller.movie.showMovieContentPage);
