@@ -14,4 +14,8 @@ module.exports = {
     enable: true,
     package: 'egg-mongoose',
   },
+  multipart: {
+    enable: true,
+    package: 'egg-multipart',
+  },
 };

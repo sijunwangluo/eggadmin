@@ -8,7 +8,13 @@ const pump = require('mz-modules/pump');
 class UploadController extends Controller {
   async avatar() {
     const { ctx } = this;
+    console.log(ctx.request.files);
+   
+    console.log(ctx.request.files[0].filename);
+    
+    
     const file = ctx.request.files[0];
+    
     if (!file) {
       ctx.body = {
         success: false,

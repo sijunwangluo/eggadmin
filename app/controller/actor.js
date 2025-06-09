@@ -142,7 +142,7 @@ class ActorController extends Controller {
 
   async showActorContentPage() {
     const { ctx } = this;
-    await ctx.render('actor_content.html'); // 假设你将创建一个 actor_content.html 视图文件
+    await ctx.render('actor_content.html', { layout: false }); // 渲染时不继承 layout
   }
 
 }

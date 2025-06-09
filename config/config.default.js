@@ -48,6 +48,13 @@ module.exports = appInfo => {
     },
   };
 
+  // 配置 multipart
+  config.multipart = {
+    mode: 'file',
+    // fileSize: '10mb', // 可选：限制文件大小
+    // fileExtensions: ['.jpg', '.png'], // 可选：限制文件扩展名
+  };
+
   // 配置静态文件
   config.static = {
     prefix: '/public/',
@@ -61,6 +68,13 @@ module.exports = appInfo => {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     },
+  };
+
+  // 配置 multipart
+  config.multipart = {
+    mode: 'file',
+    // fileSize: '10mb', // 可选：限制文件大小
+    // fileExtensions: ['.jpg', '.png'], // 可选：限制文件扩展名
   };
 
   return {

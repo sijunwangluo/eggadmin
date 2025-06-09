@@ -106,4 +106,19 @@ module.exports = app => {
 
   // 电影类型管理内容页
   router.get('/genre-content', auth, controller.genre.showGenreContentPage);
+
+  // 演员管理 API
+  router.get('/api/actors', auth, controller.actor.index);
+  router.get('/api/actors/all', auth, controller.actor.all);
+  router.post('/api/actors', auth, controller.actor.create);
+  router.get('/api/actors/:id', auth, controller.actor.show);
+  router.put('/api/actors/:id', auth, controller.actor.update);
+  router.delete('/api/actors/:id', auth, controller.actor.destroy);
+  router.post('/api/actors/batch_destroy', auth, controller.actor.batchDestroy);
+
+  // 演员管理内容页
+  router.get('/actor-content', auth, controller.actor.showActorContentPage);
+
+  // 文件上传 API
+  router.post('/api/upload/avatar', auth, controller.upload.avatar);
 };
