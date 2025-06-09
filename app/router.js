@@ -121,4 +121,5 @@ module.exports = app => {
 
   // 文件上传 API
   router.post('/api/upload/avatar', auth, controller.upload.avatar);
+  router.post('/api/upload/poster', auth, controller.upload.poster); // 新增海报上传路由
 };

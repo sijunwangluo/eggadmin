@@ -125,7 +125,23 @@
           <el-input-number v-model="currentMovie.duration" :min="0"></el-input-number>
         </el-form-item>
         <el-form-item label="海报地址" prop="posterUrl">
-          <el-input v-model="currentMovie.posterUrl"></el-input>
+          <el-input v-model="currentMovie.posterUrl" placeholder="可直接输入URL或通过下方上传"></el-input>
+          <el-upload
+            class="poster-uploader"
+            action="/api/upload/poster" 
+            :show-file-list="false"
+            :on-success="handlePosterUploadSuccess"
+            :before-upload="beforePosterUpload"
+            :headers="uploadHeaders">
+            <el-button size="small" type="primary" style="margin-top: 10px;">点击上传海报</el-button>
+            <div slot="tip" class="el-upload__tip">只能上传jpg/png文件，且不超过2MB</div>
+          </el-upload>
+          <div v-if="currentMovie.posterUrl" style="margin-top: 10px;">
+            <img :src="currentMovie.posterUrl" alt="海报预览" @click="handlePosterPreview(currentMovie.posterUrl)" style="max-width: 100px; max-height: 150px; cursor: pointer; border: 1px solid #ccc;">
+          </div>
+          <div v-else style="margin-top: 10px; width: 100px; height: 150px; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; color: #999;">
+            暂无预览
+          </div>
         </el-form-item>
         <el-form-item label="评分" prop="rating">
           <el-input-number v-model="currentMovie.rating" :min="0" :max="10" :precision="1" :step="0.1"></el-input-number>
@@ -150,6 +166,10 @@
         <el-button @click="showDoubanDialog = false">取 消</el-button>
         <el-button type="primary" @click="fetchDoubanMovie" :loading="doubanLoading">采 集</el-button>
       </span>
+    </el-dialog>
+
+    <el-dialog :visible.sync="previewDialogVisible" append-to-body title="海报预览">
+      <img :src="previewImageUrl" style="width: 100%" alt="海报大图">
     </el-dialog>
   </div>
   {% endraw %}
@@ -191,7 +211,10 @@
         doubanMovieId: '',
         doubanLoading: false,
         allActors: [], // 用于存储从API获取的所有演员列表
-        allGenres: []  // 用于存储从API获取的所有类型列表
+        allGenres: [],  // 用于存储从API获取的所有类型列表
+        uploadHeaders: { 'x-csrf-token': parent.window.csrfToken }, // CSRF token for upload
+        previewImageUrl: '',
+        previewDialogVisible: false
       },
       created() {
         this.fetchMovies();
@@ -385,6 +408,30 @@
             .catch(error => {
               this.$message.error('请求类型列表失败: ' + (error.response?.data?.message || error.message));
             });
+        },
+        handlePosterUploadSuccess(res, file) {
+          if (res.success) {
+            this.currentMovie.posterUrl = res.data.url; // 假设后端返回 { success: true, data: { url: '...' } }
+            this.$message.success('海报上传成功');
+          } else {
+            this.$message.error(res.message || '海报上传失败');
+          }
+        },
+        beforePosterUpload(file) {
+          const isJPGorPNG = file.type === 'image/jpeg' || file.type === 'image/png';
+          const isLt2M = file.size / 1024 / 1024 < 2;
+
+          if (!isJPGorPNG) {
+            this.$message.error('上传海报图片只能是 JPG/PNG 格式!');
+          }
+          if (!isLt2M) {
+            this.$message.error('上传海报图片大小不能超过 2MB!');
+          }
+          return isJPGorPNG && isLt2M;
+        },
+        handlePosterPreview(url) {
+          this.previewImageUrl = url;
+          this.previewDialogVisible = true;
         }
       }
     });
