@@ -2,6 +2,9 @@
 
 const Controller = require('egg').Controller;
 const cheerio = require('cheerio');
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 
 class MovieController extends Controller {
   async index() {
@@ -209,11 +212,51 @@ ctx.logger.info('Douban HTML Response Status:', response.status);
           genre: genres.join(', '),
           releaseDate: releaseDate ? new Date(releaseDate) : null,
           duration,
-          posterUrl,
+          posterUrl, // This will be replaced by local path after download
           description,
           rating: parseFloat(rating) || 0,
           doubanId: numericDoubanId,
         };
+
+        // Download and save poster image
+        let localPosterPath = '';
+        if (posterUrl) {
+          try {
+            const posterResponse = await axios({
+              method: 'get',
+              url: posterUrl,
+              responseType: 'stream',
+              headers: { // Douban might require a User-Agent for image requests too
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
+                'Referer': `https://movie.douban.com/subject/${numericDoubanId}/` // Adding Referer
+              }
+            });
+            const postersDir = path.join(this.app.baseDir, 'app/public/posters');
+            if (!fs.existsSync(postersDir)) {
+              fs.mkdirSync(postersDir, { recursive: true });
+            }
+            // Sanitize filename from posterUrl, or use doubanId for simplicity
+            const extension = path.extname(new URL(posterUrl).pathname) || '.jpg'; // Basic extension extraction
+            const posterFileName = `${numericDoubanId}${extension}`;
+            const localPath = path.join(postersDir, posterFileName);
+            const writer = fs.createWriteStream(localPath);
+            posterResponse.data.pipe(writer);
+
+            await new Promise((resolve, reject) => {
+              writer.on('finish', resolve);
+              writer.on('error', reject);
+            });
+            localPosterPath = `/public/posters/${posterFileName}`; // Path for frontend to access
+            movieData.posterUrl = localPosterPath; // Update movieData with the local path
+            ctx.logger.info('海报下载成功:', localPosterPath);
+          } catch (downloadError) {
+            ctx.logger.error('海报下载失败:', downloadError.message, posterUrl);
+            // If download fails, keep the original URL or set to null
+            movieData.posterUrl = posterUrl; 
+          }
+        } else {
+            movieData.posterUrl = null; // No poster URL found from Douban
+        }
 
         const newMovie = new ctx.model.Movie(movieData);
         await newMovie.save();
