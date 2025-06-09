@@ -94,4 +94,16 @@ module.exports = app => {
 
   // 电影管理内容页
   router.get('/movie-content', auth, controller.movie.showMovieContentPage);
+
+  // 电影类型管理 API
+  router.get('/api/genres', auth, controller.genre.index);
+  router.get('/api/genres/all', auth, controller.genre.all); // 获取所有类型，不分页
+  router.post('/api/genres', auth, controller.genre.create);
+  router.get('/api/genres/:id', auth, controller.genre.show);
+  router.put('/api/genres/:id', auth, controller.genre.update);
+  router.delete('/api/genres/:id', auth, controller.genre.destroy);
+  router.post('/api/genres/batch_destroy', auth, controller.genre.batchDestroy);
+
+  // 电影类型管理内容页
+  router.get('/genre-content', auth, controller.genre.showGenreContentPage);
 };

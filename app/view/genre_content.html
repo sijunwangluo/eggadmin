@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>电影类型管理</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+  <link rel="stylesheet" href="/public/css/main.css">
+  <style>
+    .container {
+      padding: 20px;
+    }
+    .action-buttons {
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+    }
+    .action-buttons .el-input {
+        margin-right: 10px;
+        width: 250px;
+    }
+    .pagination-container {
+      margin-top: 20px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  {% raw %}
+  <div id="app" class="container" v-cloak>
+    <el-card>
+      <div slot="header" class="clearfix">
+        <span>电影类型列表</span>
+      </div>
+
+      <div class="action-buttons">
+        <el-input
+          placeholder="按类型名称搜索"
+          v-model="searchParams.name"
+          clearable
+          @clear="fetchGenres"
+          @keyup.enter.native="fetchGenres"
+        >
+          <el-button slot="append" icon="el-icon-search" @click="fetchGenres"></el-button>
+        </el-input>
+        <el-button type="primary" icon="el-icon-plus" @click="openAddDialog">新增类型</el-button>
+        <el-button type="danger" icon="el-icon-delete" @click="batchDeleteGenres" :disabled="selectedGenres.length === 0">批量删除</el-button>
+      </div>
+
+      <el-table
+        :data="genres"
+        v-loading="loading"
+        @selection-change="handleSelectionChange"
+        style="width: 100%"
+      >
+        <el-table-column type="selection" width="55"></el-table-column>
+        <el-table-column prop="name" label="类型名称"></el-table-column>
+        <el-table-column prop="createdAt" label="创建时间" :formatter="formatDate" width="180"></el-table-column>
+        <el-table-column prop="updatedAt" label="更新时间" :formatter="formatDate" width="180"></el-table-column>
+        <el-table-column label="操作" width="180">
+          <template slot-scope="scope">
+            <el-button size="mini" icon="el-icon-edit" @click="openEditDialog(scope.row)">编辑</el-button>
+            <el-button size="mini" type="danger" icon="el-icon-delete" @click="deleteGenre(scope.row._id)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination-container">
+        <el-pagination
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+          :current-page="pagination.currentPage"
+          :page-sizes="[10, 20, 50, 100]"
+          :page-size="pagination.pageSize"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="pagination.total"
+        >
+        </el-pagination>
+      </div>
+    </el-card>
+
+    <!-- 新增/编辑类型对话框 -->
+    <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" width="400px">
+      <el-form :model="genreForm" :rules="genreRules" ref="genreFormRef" label-width="100px">
+        <el-form-item label="类型名称" prop="name">
+          <el-input v-model="genreForm.name" autocomplete="off"></el-input>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="dialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="submitGenreForm" :loading="submitLoading">确 定</el-button>
+      </span>
+    </el-dialog>
+  </div>
+  {% endraw %}
+
+  <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
+  <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script>
+    axios.defaults.headers.common['x-csrf-token'] = parent.window.csrfToken;
+    new Vue({
+      el: '#app',
+      data() {
+        return {
+          genres: [],
+          selectedGenres: [],
+          loading: false,
+          submitLoading: false,
+          dialogVisible: false,
+          dialogTitle: '',
+          genreForm: {
+            _id: null,
+            name: ''
+          },
+          genreRules: {
+            name: [
+              { required: true, message: '请输入类型名称', trigger: 'blur' },
+              { min: 1, max: 50, message: '长度在 1 到 50 个字符', trigger: 'blur' }
+            ]
+          },
+          searchParams: {
+              name: ''
+          },
+          pagination: {
+            currentPage: 1,
+            pageSize: 10,
+            total: 0
+          }
+        };
+      },
+      created() {
+        this.fetchGenres();
+      },
+      methods: {
+        formatDate(row, column, cellValue) {
+          return cellValue ? new Date(cellValue).toLocaleString() : '';
+        },
+        fetchGenres() {
+          this.loading = true;
+          axios.get('/api/genres', {
+            params: {
+              page: this.pagination.currentPage,
+              limit: this.pagination.pageSize,
+              name: this.searchParams.name.trim()
+            }
+          })
+          .then(response => {
+            if (response.data.success) {
+              this.genres = response.data.data;
+              this.pagination.total = response.data.total;
+            } else {
+              this.$message.error(response.data.message || '获取类型列表失败');
+            }
+          })
+          .catch(error => {
+            this.$message.error('请求类型列表失败: ' + (error.response?.data?.message || error.message));
+          })
+          .finally(() => {
+            this.loading = false;
+          });
+        },
+        handleSelectionChange(selection) {
+          this.selectedGenres = selection;
+        },
+        openAddDialog() {
+          this.dialogTitle = '新增类型';
+          this.genreForm = { _id: null, name: '' };
+          this.dialogVisible = true;
+          this.$nextTick(() => {
+            this.$refs.genreFormRef.clearValidate();
+          });
+        },
+        openEditDialog(genre) {
+          this.dialogTitle = '编辑类型';
+          this.genreForm = { ...genre };
+          this.dialogVisible = true;
+          this.$nextTick(() => {
+            this.$refs.genreFormRef.clearValidate();
+          });
+        },
+        submitGenreForm() {
+          this.$refs.genreFormRef.validate(valid => {
+            if (valid) {
+              this.submitLoading = true;
+              const apiUrl = this.genreForm._id ? `/api/genres/${this.genreForm._id}` : '/api/genres';
+              const apiMethod = this.genreForm._id ? 'put' : 'post';
+              axios[apiMethod](apiUrl, { name: this.genreForm.name.trim() })
+                .then(response => {
+                  if (response.data.success) {
+                    this.$message.success(this.genreForm._id ? '类型更新成功' : '类型新增成功');
+                    this.dialogVisible = false;
+                    this.fetchGenres(); // Refresh list
+                  } else {
+                    this.$message.error(response.data.message || '操作失败');
+                  }
+                })
+                .catch(error => {
+                  this.$message.error('操作请求失败: ' + (error.response?.data?.message || error.message));
+                })
+                .finally(() => {
+                  this.submitLoading = false;
+                });
+            }
+          });
+        },
+        deleteGenre(id) {
+          this.$confirm('此操作将永久删除该类型, 是否继续?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            axios.delete(`/api/genres/${id}`)
+              .then(response => {
+                if (response.data.success) {
+                  this.$message.success('删除成功');
+                  this.fetchGenres(); // Refresh list
+                } else {
+                  this.$message.error(response.data.message || '删除失败');
+                }
+              })
+              .catch(error => {
+                this.$message.error('删除请求失败: ' + (error.response?.data?.message || error.message));
+              });
+          }).catch(() => {
+            // User cancelled
+          });
+        },
+        batchDeleteGenres() {
+          if (this.selectedGenres.length === 0) {
+            this.$message.warning('请至少选择一个类型进行删除');
+            return;
+          }
+          this.$confirm(`此操作将永久删除选中的 ${this.selectedGenres.length} 个类型, 是否继续?`, '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          }).then(() => {
+            const ids = this.selectedGenres.map(g => g._id);
+            axios.post('/api/genres/batch_destroy', { ids })
+              .then(response => {
+                if (response.data.success) {
+                  this.$message.success(response.data.message || '批量删除成功');
+                  this.fetchGenres(); // Refresh list
+                } else {
+                  this.$message.error(response.data.message || '批量删除失败');
+                }
+              })
+              .catch(error => {
+                this.$message.error('批量删除请求失败: ' + (error.response?.data?.message || error.message));
+              });
+          }).catch(() => {
+            // User cancelled
+          });
+        },
+        handleSizeChange(val) {
+          this.pagination.pageSize = val;
+          this.pagination.currentPage = 1; // Reset to first page
+          this.fetchGenres();
+        },
+        handleCurrentChange(val) {
+          this.pagination.currentPage = val;
+          this.fetchGenres();
+        }
+      }
+    });
+  </script>
+</body>
+</html>

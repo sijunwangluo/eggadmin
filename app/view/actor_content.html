@@ -1,0 +1,323 @@
+{% extends "layout.html" %}
+
+{% block title %}电影演员管理{% endblock %}
+
+{% block head %}
+<style>
+  .action-buttons {
+    margin-bottom: 20px;
+  }
+  .pagination-container {
+    margin-top: 20px;
+    text-align: right;
+  }
+  .avatar-uploader .el-upload {
+    border: 1px dashed #d9d9d9;
+    border-radius: 6px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .avatar-uploader .el-upload:hover {
+    border-color: #409EFF;
+  }
+  .avatar-uploader-icon {
+    font-size: 28px;
+    color: #8c939d;
+    width: 100px;
+    height: 100px;
+    line-height: 100px;
+    text-align: center;
+  }
+  .avatar {
+    width: 100px;
+    height: 100px;
+    display: block;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app" v-cloak>
+  <el-card>
+    <div slot="header" class="clearfix">
+      <span>电影演员列表</span>
+    </div>
+
+    <div class="action-buttons">
+      <el-input
+        placeholder="按演员名称搜索"
+        v-model="searchParams.name"
+        clearable
+        style="width: 200px; margin-right: 10px;"
+        @clear="fetchActors"
+        @keyup.enter.native="fetchActors"
+      >
+        <el-button slot="append" icon="el-icon-search" @click="fetchActors"></el-button>
+      </el-input>
+      <el-button type="primary" icon="el-icon-plus" @click="openAddDialog">新增演员</el-button>
+      <el-button type="danger" icon="el-icon-delete" @click="batchDeleteActors" :disabled="selectedActors.length === 0">批量删除</el-button>
+    </div>
+
+    <el-table
+      :data="actors"
+      v-loading="loading"
+      @selection-change="handleSelectionChange"
+      style="width: 100%"
+    >
+      <el-table-column type="selection" width="55"></el-table-column>
+      <el-table-column label="头像" width="120">
+        <template slot-scope="scope">
+          <img :src="scope.row.avatar || '/public/images/default_avatar.png'" alt="avatar" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+        </template>
+      </el-table-column>
+      <el-table-column prop="name" label="演员名称"></el-table-column>
+      <el-table-column prop="bio" label="简介" show-overflow-tooltip></el-table-column>
+      <el-table-column prop="createdAt" label="创建时间" :formatter="formatDate"></el-table-column>
+      <el-table-column prop="updatedAt" label="更新时间" :formatter="formatDate"></el-table-column>
+      <el-table-column label="操作" width="180">
+        <template slot-scope="scope">
+          <el-button size="mini" icon="el-icon-edit" @click="openEditDialog(scope.row)">编辑</el-button>
+          <el-button size="mini" type="danger" icon="el-icon-delete" @click="deleteActor(scope.row._id)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <div class="pagination-container">
+      <el-pagination
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+        :current-page="pagination.currentPage"
+        :page-sizes="[10, 20, 50, 100]"
+        :page-size="pagination.pageSize"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="pagination.total"
+      >
+      </el-pagination>
+    </div>
+  </el-card>
+
+  <!-- 新增/编辑演员对话框 -->
+  <el-dialog :title="dialogTitle" :visible.sync="dialogVisible" width="40%">
+    <el-form :model="actorForm" :rules="actorRules" ref="actorFormRef" label-width="100px">
+      <el-form-item label="演员名称" prop="name">
+        <el-input v-model="actorForm.name" autocomplete="off"></el-input>
+      </el-form-item>
+      <el-form-item label="演员头像" prop="avatar">
+        <el-upload
+          class="avatar-uploader"
+          action="/api/upload/avatar" 
+          :show-file-list="false"
+          :on-success="handleAvatarSuccess"
+          :before-upload="beforeAvatarUpload"
+          name="file" 
+        >
+          <img v-if="actorForm.avatar" :src="actorForm.avatar" class="avatar">
+          <i v-else class="el-icon-plus avatar-uploader-icon"></i>
+        </el-upload>
+        <el-input v-model="actorForm.avatar" placeholder="或输入头像URL" style="margin-top:10px;"></el-input>
+      </el-form-item>
+      <el-form-item label="演员简介" prop="bio">
+        <el-input type="textarea" :rows="3" v-model="actorForm.bio" autocomplete="off"></el-input>
+      </el-form-item>
+    </el-form>
+    <span slot="footer" class="dialog-footer">
+      <el-button @click="dialogVisible = false">取 消</el-button>
+      <el-button type="primary" @click="submitActorForm">确 定</el-button>
+    </span>
+  </el-dialog>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  new Vue({
+    el: '#app',
+    data() {
+      return {
+        actors: [],
+        selectedActors: [],
+        loading: false,
+        dialogVisible: false,
+        dialogTitle: '',
+        actorForm: {
+          _id: null,
+          name: '',
+          avatar: '',
+          bio: ''
+        },
+        actorRules: {
+          name: [
+            { required: true, message: '请输入演员名称', trigger: 'blur' },
+            { min: 1, max: 100, message: '长度在 1 到 100 个字符', trigger: 'blur' }
+          ],
+          avatar: [
+            // { type: 'url', message: '请输入有效的URL', trigger: ['blur', 'change'] } 
+            // Temporarily disable URL validation for avatar as it can be a local path after upload
+          ]
+        },
+        searchParams: {
+            name: ''
+        },
+        pagination: {
+          currentPage: 1,
+          pageSize: 10,
+          total: 0
+        }
+      };
+    },
+    created() {
+      this.fetchActors();
+    },
+    methods: {
+      formatDate(row, column, cellValue) {
+        return cellValue ? new Date(cellValue).toLocaleString() : '';
+      },
+      fetchActors() {
+        this.loading = true;
+        axios.get('/api/actors', {
+          params: {
+            page: this.pagination.currentPage,
+            limit: this.pagination.pageSize,
+            name: this.searchParams.name
+          }
+        })
+        .then(response => {
+          if (response.data.success) {
+            this.actors = response.data.data;
+            this.pagination.total = response.data.total;
+          } else {
+            this.$message.error(response.data.message || '获取演员列表失败');
+          }
+        })
+        .catch(error => {
+          this.$message.error('请求演员列表失败: ' + error.message);
+        })
+        .finally(() => {
+          this.loading = false;
+        });
+      },
+      handleSelectionChange(selection) {
+        this.selectedActors = selection;
+      },
+      openAddDialog() {
+        this.dialogTitle = '新增演员';
+        this.actorForm = { _id: null, name: '', avatar: '', bio: '' };
+        this.dialogVisible = true;
+        this.$nextTick(() => {
+          this.$refs.actorFormRef.clearValidate();
+        });
+      },
+      openEditDialog(actor) {
+        this.dialogTitle = '编辑演员';
+        this.actorForm = { ...actor };
+        this.dialogVisible = true;
+        this.$nextTick(() => {
+          this.$refs.actorFormRef.clearValidate();
+        });
+      },
+      submitActorForm() {
+        this.$refs.actorFormRef.validate(valid => {
+          if (valid) {
+            const apiUrl = this.actorForm._id ? `/api/actors/${this.actorForm._id}` : '/api/actors';
+            const apiMethod = this.actorForm._id ? 'put' : 'post';
+            axios[apiMethod](apiUrl, this.actorForm)
+              .then(response => {
+                if (response.data.success) {
+                  this.$message.success(this.actorForm._id ? '演员更新成功' : '演员新增成功');
+                  this.dialogVisible = false;
+                  this.fetchActors(); // Refresh list
+                } else {
+                  this.$message.error(response.data.message || '操作失败');
+                }
+              })
+              .catch(error => {
+                const errorMsg = error.response && error.response.data && error.response.data.message 
+                               ? error.response.data.message 
+                               : '操作请求失败';
+                this.$message.error(errorMsg);
+              });
+          }
+        });
+      },
+      deleteActor(id) {
+        this.$confirm('此操作将永久删除该演员, 是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          axios.delete(`/api/actors/${id}`)
+            .then(response => {
+              if (response.data.success) {
+                this.$message.success('删除成功');
+                this.fetchActors(); // Refresh list
+              } else {
+                this.$message.error(response.data.message || '删除失败');
+              }
+            })
+            .catch(error => {
+              this.$message.error('删除请求失败: ' + error.message);
+            });
+        }).catch(() => {
+          // User cancelled
+        });
+      },
+      batchDeleteActors() {
+        if (this.selectedActors.length === 0) {
+          this.$message.warning('请至少选择一个演员进行删除');
+          return;
+        }
+        this.$confirm(`此操作将永久删除选中的 ${this.selectedActors.length} 个演员, 是否继续?`, '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          const ids = this.selectedActors.map(a => a._id);
+          axios.post('/api/actors/batch_destroy', { ids })
+            .then(response => {
+              if (response.data.success) {
+                this.$message.success(response.data.message || '批量删除成功');
+                this.fetchActors(); // Refresh list
+              } else {
+                this.$message.error(response.data.message || '批量删除失败');
+              }
+            })
+            .catch(error => {
+              this.$message.error('批量删除请求失败: ' + error.message);
+            });
+        }).catch(() => {
+          // User cancelled
+        });
+      },
+      handleAvatarSuccess(res, file) {
+        if (res.success && res.data && res.data.url) {
+            this.actorForm.avatar = res.data.url;
+            this.$message.success('头像上传成功');
+        } else {
+            this.$message.error(res.message || '头像上传失败');
+        }
+      },
+      beforeAvatarUpload(file) {
+        const isJPGorPNG = file.type === 'image/jpeg' || file.type === 'image/png';
+        const isLt2M = file.size / 1024 / 1024 < 2;
+
+        if (!isJPGorPNG) {
+          this.$message.error('上传头像图片只能是 JPG/PNG 格式!');
+        }
+        if (!isLt2M) {
+          this.$message.error('上传头像图片大小不能超过 2MB!');
+        }
+        return isJPGorPNG && isLt2M;
+      },
+      handleSizeChange(val) {
+        this.pagination.pageSize = val;
+        this.fetchActors();
+      },
+      handleCurrentChange(val) {
+        this.pagination.currentPage = val;
+        this.fetchActors();
+      }
+    }
+  });
+</script>
+{% endblock %}
