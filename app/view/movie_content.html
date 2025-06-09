@@ -99,11 +99,23 @@
           <el-input v-model="currentMovie.director"></el-input>
         </el-form-item>
         <el-form-item label="演员" prop="actors">
-          <el-select v-model="currentMovie.actors" multiple filterable allow-create default-first-option placeholder="请输入演员名" style="width:100%;">
+          <el-select v-model="currentMovie.actors" multiple filterable placeholder="请选择演员" style="width:100%;">
+            <el-option
+              v-for="item in allActors"
+              :key="item._id"
+              :label="item.name"
+              :value="item._id">
+            </el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="类型" prop="genre">
-          <el-select v-model="currentMovie.genre" multiple filterable allow-create default-first-option placeholder="请输入类型" style="width:100%;">
+          <el-select v-model="currentMovie.genre" multiple filterable placeholder="请选择类型" style="width:100%;">
+            <el-option
+              v-for="item in allGenres"
+              :key="item._id" 
+              :label="item.name"
+              :value="item.name">
+            </el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="上映日期" prop="releaseDate">
@@ -157,8 +169,8 @@
         currentMovie: {
           title: '',
           director: '',
-          actors: [],
-          genre: [],
+          actors: [], // 将存储选中的演员ID或对象
+          genre: [], // 将存储选中的类型名称或对象
           releaseDate: null,
           duration: 0,
           posterUrl: '',
@@ -177,10 +189,14 @@
         },
         showDoubanDialog: false,
         doubanMovieId: '',
-        doubanLoading: false
+        doubanLoading: false,
+        allActors: [], // 用于存储从API获取的所有演员列表
+        allGenres: []  // 用于存储从API获取的所有类型列表
       },
       created() {
         this.fetchMovies();
+        this.fetchAllActors();
+        this.fetchAllGenres();
       },
       methods: {
         fetchMovies() {
@@ -200,6 +216,7 @@
         },
         handleAdd() {
           this.dialogTitle = '新增电影';
+          // 保留从 allActors 和 allGenres 获取数据的逻辑，这里清空选中值
           this.currentMovie = {
             title: '',
             director: '',
@@ -218,13 +235,20 @@
         },
         handleEdit(movie) {
           this.dialogTitle = '编辑电影';
-          this.currentMovie = Object.assign({}, movie);
-          // Element UI select multiple value needs to be array
-          if (typeof this.currentMovie.actors === 'string') {
-            this.currentMovie.actors = this.currentMovie.actors ? this.currentMovie.actors.split(',').map(s => s.trim()) : [];
+          this.currentMovie = Object.assign({}, movie); 
+          // 确保 actors 和 genre 是数组，如果不是（例如从旧数据或API直接获取的是字符串），则转换
+          // 假设后端返回的 movie.actors 是ID数组，movie.genre 是名称数组
+          if (!Array.isArray(this.currentMovie.actors)) {
+            // 如果 actors 是字符串，尝试按逗号分割；如果是单个ID，则放入数组
+            // 这一步取决于 movie 对象中 actors 字段的实际格式
+            // 假设后端返回的 movie.actors 已经是ID数组，或者需要根据实际情况调整
+            // 如果 movie.actors 是 [{_id: 'xxx', name: 'yyy'}] 这样的对象数组，需要提取ID
+            // this.currentMovie.actors = movie.actors ? movie.actors.map(actor => actor._id) : [];
+             this.currentMovie.actors = movie.actors || []; // 假设已经是ID数组
           }
-          if (typeof this.currentMovie.genre === 'string') {
-            this.currentMovie.genre = this.currentMovie.genre ? this.currentMovie.genre.split(',').map(s => s.trim()) : [];
+          if (!Array.isArray(this.currentMovie.genre)) {
+            // this.currentMovie.genre = movie.genre ? movie.genre.map(g => g.name || g) : []; // 假设已经是名称数组或对象数组
+            this.currentMovie.genre = movie.genre || []; // 假设已经是名称数组
           }
           this.dialogVisible = true;
           this.$nextTick(() => {
@@ -268,9 +292,9 @@
           this.$refs.movieForm.validate((valid) => {
             if (valid) {
               const movieData = { ...this.currentMovie };
-              // Ensure actors and genre are arrays of strings
-              movieData.actors = Array.isArray(movieData.actors) ? movieData.actors.filter(s => typeof s === 'string' && s.trim() !== '') : [];
-              movieData.genre = Array.isArray(movieData.genre) ? movieData.genre.filter(s => typeof s === 'string' && s.trim() !== '') : [];
+              // actors 已经是ID数组， genre 已经是名称数组，无需特别转换，除非后端需要特定格式
+              // movieData.actors 已经是选中的演员ID数组
+              // movieData.genre 已经是选中的类型名称数组
 
               if (movieData._id) {
                 // 编辑
@@ -334,6 +358,32 @@
             })
             .finally(() => {
               this.doubanLoading = false;
+            });
+        },
+        fetchAllActors() {
+          axios.get('/api/actors/all')
+            .then(response => {
+              if (response.data.success) {
+                this.allActors = response.data.data;
+              } else {
+                this.$message.error('获取演员列表失败: ' + response.data.message);
+              }
+            })
+            .catch(error => {
+              this.$message.error('请求演员列表失败: ' + (error.response?.data?.message || error.message));
+            });
+        },
+        fetchAllGenres() {
+          axios.get('/api/genres/all')
+            .then(response => {
+              if (response.data.success) {
+                this.allGenres = response.data.data;
+              } else {
+                this.$message.error('获取类型列表失败: ' + response.data.message);
+              }
+            })
+            .catch(error => {
+              this.$message.error('请求类型列表失败: ' + (error.response?.data?.message || error.message));
             });
         }
       }
